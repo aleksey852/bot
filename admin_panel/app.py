@@ -54,16 +54,21 @@ async def log_slow_requests(request: Request, call_next):
     """Middleware to log slow requests for debugging"""
     start_time = time.time()
     
+    # Log ALL incoming requests immediately
+    logger.info(f"➡️  {request.method} {request.url.path} started")
+    
     try:
         response = await call_next(request)
     except Exception as e:
         duration = time.time() - start_time
-        logger.error(f"❌ Request failed: {request.method} {request.url.path} - {duration:.2f}s - {e}")
+        logger.error(f"❌ Request failed: {request.method} {request.url.path} - {duration:.2f}s - {type(e).__name__}: {e}")
         raise
     
     duration = time.time() - start_time
     if duration > SLOW_REQUEST_THRESHOLD:
         logger.warning(f"🐢 Slow request: {request.method} {request.url.path} - {duration:.2f}s")
+    else:
+        logger.info(f"✅ {request.method} {request.url.path} - {duration:.2f}s - {response.status_code}")
     
     return response
 
@@ -377,16 +382,21 @@ async def send_user_message(
     user: str = Depends(get_current_user)
 ):
     """Send message to specific user"""
+    # DEBUG: Print immediately to see if we reach this point
+    print(f"[DEBUG] send_user_message called: user_id={user_id}, text={text}, has_photo={photo is not None}")
+    logger.info(f"📤 [START] Sending message to user {user_id}, text='{text}', photo={photo.filename if photo else None}")
+    
     from database import get_user_detail, add_campaign
     
-    logger.info(f"📤 Sending message to user {user_id}")
     start_time = time.time()
     
+    logger.info(f"📤 [STEP 1] Getting user details for {user_id}")
     try:
         user_data = await asyncio.wait_for(
             get_user_detail(user_id),
             timeout=DB_OPERATION_TIMEOUT
         )
+        logger.info(f"📤 [STEP 2] Got user data in {time.time() - start_time:.2f}s")
     except asyncio.TimeoutError:
         logger.error(f"❌ Timeout getting user {user_id} details")
         raise HTTPException(status_code=504, detail="Database timeout while getting user")
@@ -397,6 +407,7 @@ async def send_user_message(
     content = {}
     
     if photo and photo.filename:
+        logger.info(f"📤 [STEP 3] Saving photo {photo.filename}")
         # Save photo
         ext = Path(photo.filename).suffix or ".jpg"
         filename = f"{uuid.uuid4()}{ext}"
@@ -408,8 +419,10 @@ async def send_user_message(
         content["photo_path"] = str(filepath)
         content["caption"] = text
     elif text:
+        logger.info(f"📤 [STEP 3] Text message only")
         content["text"] = text
     else:
+        logger.warning(f"📤 [STEP 3] No content provided, redirecting with error")
         return RedirectResponse(
             url=f"/users/{user_id}?msg=error_empty",
             status_code=status.HTTP_303_SEE_OTHER
@@ -418,13 +431,14 @@ async def send_user_message(
     # Create single-user campaign with timeout
     content["target_user_id"] = user_data['telegram_id']
     
+    logger.info(f"📤 [STEP 4] Creating campaign for telegram_id={user_data['telegram_id']}")
     try:
         campaign_id = await asyncio.wait_for(
             add_campaign("single_message", content),
             timeout=DB_OPERATION_TIMEOUT
         )
         duration = time.time() - start_time
-        logger.info(f"✅ Message campaign {campaign_id} created for user {user_id} in {duration:.2f}s")
+        logger.info(f"✅ [DONE] Message campaign {campaign_id} created for user {user_id} in {duration:.2f}s")
     except asyncio.TimeoutError:
         logger.error(f"❌ Timeout creating message campaign for user {user_id}")
         raise HTTPException(
@@ -435,6 +449,7 @@ async def send_user_message(
         logger.error(f"❌ Failed to create message campaign: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create campaign: {str(e)}")
     
+    logger.info(f"📤 [REDIRECT] Redirecting to /users/{user_id}?msg=sent")
     return RedirectResponse(
         url=f"/users/{user_id}?msg=sent",
         status_code=status.HTTP_303_SEE_OTHER
