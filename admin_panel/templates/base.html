@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default('Dashboard', true) }} - Buster Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 240px; --primary: #6366f1; }
+        body { background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
+            background: linear-gradient(135deg, #1e293b, #0f172a); padding: 1rem; z-index: 1000;
+            overflow-y: auto;
+        }
+        .sidebar-brand { color: #fff; font-size: 1.2rem; font-weight: 700; padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem; }
+        .sidebar .nav-link { color: #94a3b8; padding: 0.6rem 1rem; border-radius: 0.5rem; margin-bottom: 0.2rem; transition: all 0.2s; }
+        .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
+        .sidebar .nav-link.active { color: #fff; background: var(--primary); }
+        .sidebar .nav-link i { width: 1.5rem; margin-right: 0.5rem; }
+        .nav-section-title { color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; padding: 0.5rem 1rem; margin-top: 1rem; }
+        .main-content { margin-left: var(--sidebar-width); padding: 2rem; min-height: 100vh; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        .page-title { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin: 0; }
+        .card { border: none; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card-header { background: #fff; border-bottom: 1px solid #e2e8f0; font-weight: 600; padding: 1rem 1.25rem; }
+        .stat-card { border-left: 4px solid var(--primary); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: #1e293b; }
+        .stat-label { color: #64748b; font-size: 0.85rem; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); }
+        .btn-primary:hover { background: #4f46e5; border-color: #4f46e5; }
+        .table th { font-weight: 600; color: #64748b; font-size: 0.75rem; text-transform: uppercase; }
+        .badge-valid { background: #dcfce7; color: #166534; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-completed { background: #dcfce7; color: #166534; }
+        .badge-scheduled { background: #dbeafe; color: #1e40af; }
+        .alert-success-custom { background: #dcfce7; border: 1px solid #86efac; color: #166534; border-radius: 0.5rem; }
+        .alert-info-custom { background: #dbeafe; border: 1px solid #93c5fd; color: #1e40af; border-radius: 0.5rem; }
+        .form-label { font-weight: 500; color: #374151; }
+        .sidebar-footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-brand"><i class="bi bi-robot"></i> Buster Admin</div>
+        
+        <div class="nav-section-title">Главное</div>
+        <ul class="nav flex-column">
+            <li><a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+        </ul>
+        
+        <div class="nav-section-title">Данные</div>
+        <ul class="nav flex-column">
+            <li><a class="nav-link {% if '/users' in request.url.path %}active{% endif %}" href="/users"><i class="bi bi-people"></i> Пользователи</a></li>
+            <li><a class="nav-link {% if '/receipts' in request.url.path %}active{% endif %}" href="/receipts"><i class="bi bi-receipt"></i> Чеки</a></li>
+            <li><a class="nav-link {% if '/winners' in request.url.path %}active{% endif %}" href="/winners"><i class="bi bi-trophy"></i> Победители</a></li>
+        </ul>
+        
+        <div class="nav-section-title">Действия</div>
+        <ul class="nav flex-column">
+            <li><a class="nav-link {% if '/broadcast' in request.url.path %}active{% endif %}" href="/broadcast"><i class="bi bi-megaphone"></i> Рассылка</a></li>
+            <li><a class="nav-link {% if '/raffle' in request.url.path %}active{% endif %}" href="/raffle"><i class="bi bi-gift"></i> Розыгрыш</a></li>
+            <li><a class="nav-link {% if '/campaigns' in request.url.path %}active{% endif %}" href="/campaigns"><i class="bi bi-list-task"></i> Кампании</a></li>
+        </ul>
+        
+        <div class="nav-section-title">Настройки</div>
+        <ul class="nav flex-column">
+            <li><a class="nav-link {% if request.url.path == '/settings' %}active{% endif %}" href="/settings"><i class="bi bi-gear"></i> Промо</a></li>
+            <li><a class="nav-link {% if '/settings/messages' in request.url.path %}active{% endif %}" href="/settings/messages"><i class="bi bi-chat-text"></i> Тексты</a></li>
+            <li><a class="nav-link {% if '/settings/support' in request.url.path %}active{% endif %}" href="/settings/support"><i class="bi bi-headset"></i> Поддержка</a></li>
+        </ul>
+        
+        <div class="sidebar-footer">
+            <a class="nav-link text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> Выход</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

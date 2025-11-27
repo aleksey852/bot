@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.total_users if stats else 0 }}</div>
+                <div class="stat-label">Пользователей</div>
+                <small class="text-success">+{{ stats.users_today if stats else 0 }} сегодня</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #10b981;">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.valid_receipts if stats else 0 }}</div>
+                <div class="stat-label">Принятых чеков</div>
+                <small class="text-success">+{{ stats.receipts_today if stats else 0 }} сегодня</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #f59e0b;">
+            <div class="card-body">
+                <div class="stat-value">{{ participants if participants else 0 }}</div>
+                <div class="stat-label">Участников розыгрыша</div>
+                <small class="text-muted">{{ stats.conversion if stats else 0 }}% конверсия</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: #ef4444;">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.total_winners if stats else 0 }}</div>
+                <div class="stat-label">Победителей</div>
+                <small class="text-muted">{{ stats.completed_campaigns if stats else 0 }} розыгрышей</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up"></i> Динамика за 14 дней</span>
+            </div>
+            <div class="card-body">
+                <canvas id="statsChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-lightning"></i> Быстрые действия</div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="/broadcast" class="btn btn-outline-primary"><i class="bi bi-megaphone"></i> Создать рассылку</a>
+                <a href="/raffle" class="btn btn-outline-warning"><i class="bi bi-gift"></i> Провести розыгрыш</a>
+                <a href="/users" class="btn btn-outline-secondary"><i class="bi bi-people"></i> Найти пользователя</a>
+                <a href="/settings" class="btn btn-outline-secondary"><i class="bi bi-gear"></i> Настройки промо</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history"></i> Последние кампании</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Тип</th>
+                                <th>Статус</th>
+                                <th>Отправлено</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in recent_campaigns %}
+                            <tr>
+                                <td>#{{ c.id }}</td>
+                                <td>
+                                    {% if c.type == 'broadcast' %}
+                                    <span class="badge bg-primary">Рассылка</span>
+                                    {% elif c.type == 'raffle' %}
+                                    <span class="badge bg-warning text-dark">Розыгрыш</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ c.type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if c.is_completed %}
+                                    <span class="badge badge-completed">✓ Завершена</span>
+                                    {% elif c.scheduled_for %}
+                                    <span class="badge badge-scheduled">⏰ {{ c.scheduled_for.strftime('%d.%m %H:%M') if c.scheduled_for else '' }}</span>
+                                    {% else %}
+                                    <span class="badge badge-pending">⏳ В очереди</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ c.sent_count or 0 }} / {{ c.failed_count or 0 }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">Нет кампаний</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="/campaigns" class="text-decoration-none">Все кампании →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-info-circle"></i> Информация</div>
+            <div class="card-body">
+                <p><strong>Пользователь:</strong> {{ user }}</p>
+                <p><strong>За неделю:</strong> +{{ stats.users_week if stats else 0 }} пользователей, +{{ stats.receipts_week if stats else 0 }} чеков</p>
+                <p><strong>Всего чеков:</strong> {{ stats.total_receipts if stats else 0 }} ({{ stats.valid_receipts if stats else 0 }} принято)</p>
+                <hr>
+                <p class="text-muted mb-0"><small>Статистика обновляется каждую минуту</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Parse daily stats from server
+    const dailyStats = {{ daily_stats | tojson | safe }};
+    
+    const labels = dailyStats.map(d => {
+        const date = new Date(d.day);
+        return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    });
+    const users = dailyStats.map(d => d.users);
+    const receipts = dailyStats.map(d => d.receipts);
+    
+    const ctx = document.getElementById('statsChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Новые пользователи',
+                    data: users,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Принятые чеки',
+                    data: receipts,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

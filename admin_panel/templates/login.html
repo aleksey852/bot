@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Buster Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #1e293b, #0f172a); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-card { max-width: 400px; width: 100%; border-radius: 1rem; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .login-header { background: #6366f1; color: white; padding: 2rem; text-align: center; border-radius: 1rem 1rem 0 0; }
+        .login-body { padding: 2rem; background: white; border-radius: 0 0 1rem 1rem; }
+        .btn-primary { background: #6366f1; border-color: #6366f1; }
+        .btn-primary:hover { background: #4f46e5; border-color: #4f46e5; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <h3><i class="bi bi-robot"></i> Buster Admin</h3>
+        </div>
+        <div class="login-body">
+            {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+            <form method="post" action="/login">
+                <div class="mb-3">
+                    <label class="form-label">Логин</label>
+                    <input type="text" name="username" class="form-control" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Войти</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

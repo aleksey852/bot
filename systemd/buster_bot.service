@@ -1,0 +1,16 @@
+[Unit]
+Description=Buster Vibe Telegram Bot
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=buster
+WorkingDirectory=/opt/buster-vibe-bot
+ExecStart=/opt/buster-vibe-bot/venv/bin/python main.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

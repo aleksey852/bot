@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Чеки</h1>
+    <span class="badge bg-success">Всего: {{ total }}</span>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Пользователь</th>
+                        <th>Статус</th>
+                        <th>Товар</th>
+                        <th>Сумма</th>
+                        <th>ФН / ФД / ФП</th>
+                        <th>Дата</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in receipts %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td>
+                            {% if r.full_name %}{{ r.full_name }}{% endif %}
+                            {% if r.username %}<br><small class="text-muted">@{{ r.username }}</small>{% endif %}
+                        </td>
+                        <td>
+                            {% if r.status == 'valid' %}
+                            <span class="badge badge-valid">Принят</span>
+                            {% elif r.status == 'pending' %}
+                            <span class="badge badge-pending">Ожидает</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ r.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ r.product_name[:30] if r.product_name else '-' }}{% if r.product_name and r.product_name|length > 30 %}...{% endif %}</td>
+                        <td>{{ '%.2f ₽' % (r.total_sum / 100) if r.total_sum else '-' }}</td>
+                        <td><small><code>{{ r.fiscal_drive_number or '-' }} / {{ r.fiscal_document_number or '-' }} / {{ r.fiscal_sign or '-' }}</code></small></td>
+                        <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Нет чеков</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page > 1 %}
+        <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}">← Назад</a></li>
+        {% endif %}
+        
+        <li class="page-item disabled"><span class="page-link">{{ page }} / {{ total_pages }}</span></li>
+        
+        {% if page < total_pages %}
+        <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}">Вперёд →</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

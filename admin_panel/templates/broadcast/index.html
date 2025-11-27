@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-megaphone"></i> Рассылка</h1>
+</div>
+
+{% if created %}
+<div class="alert alert-success-custom mb-4">
+    <i class="bi bi-check-circle"></i> Рассылка #{{ created }} создана и будет запущена по расписанию!
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-plus-circle"></i> Создать рассылку</div>
+            <div class="card-body">
+                <form method="post" action="/broadcast/create" enctype="multipart/form-data">
+                    <div class="alert alert-info-custom mb-4">
+                        <i class="bi bi-info-circle"></i> Получателей: <strong>{{ total_users }}</strong> пользователей
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Текст сообщения</label>
+                        <textarea name="text" class="form-control" rows="4" placeholder="Введите текст сообщения..."></textarea>
+                        <small class="text-muted">Поддерживается HTML форматирование</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Фото (опционально)</label>
+                        <input type="file" name="photo" class="form-control" accept="image/*">
+                        <small class="text-muted">Если загружено фото, текст станет подписью</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Запланировать на (опционально)</label>
+                        <input type="text" name="scheduled_for" class="form-control" placeholder="2025-01-15 18:00">
+                        <small class="text-muted">Формат: YYYY-MM-DD HH:MM. Оставьте пустым для немедленной отправки.</small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-send"></i> Создать рассылку
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history"></i> Последние рассылки</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Статус</th>
+                                <th>Отправлено</th>
+                                <th>Ошибок</th>
+                                <th>Дата</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in broadcasts %}
+                            <tr>
+                                <td>#{{ b.id }}</td>
+                                <td>
+                                    {% if b.is_completed %}
+                                    <span class="badge badge-completed">✓ Завершена</span>
+                                    {% elif b.scheduled_for %}
+                                    <span class="badge badge-scheduled">⏰ {{ b.scheduled_for.strftime('%d.%m %H:%M') if b.scheduled_for else '' }}</span>
+                                    {% else %}
+                                    <span class="badge badge-pending">⏳ В очереди</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="text-success">{{ b.sent_count or 0 }}</span></td>
+                                <td><span class="text-danger">{{ b.failed_count or 0 }}</span></td>
+                                <td>{{ b.created_at.strftime('%d.%m.%Y %H:%M') if b.created_at else '-' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Нет рассылок</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header"><i class="bi bi-lightbulb"></i> Советы</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Рассылка обрабатывается в фоновом режиме</li>
+                    <li>Заблокировавшие бота пользователи будут пропущены</li>
+                    <li>Между сообщениями соблюдается пауза для избежания блокировки</li>
+                    <li>Статистика обновляется каждые 100 сообщений</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Тексты сообщений бота</h1>
+</div>
+
+{% if updated %}
+<div class="alert alert-success-custom mb-4">
+    <i class="bi bi-check-circle"></i> Текст сохранён! Изменения применятся сразу.
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-info-circle"></i> Как это работает</div>
+    <div class="card-body">
+        <p class="mb-2">Вы можете редактировать тексты сообщений бота без перезапуска. Используйте переменные:</p>
+        <ul class="mb-0">
+            <li><code>{name}</code> — имя пользователя</li>
+            <li><code>{count}</code> — количество чеков</li>
+            <li><code>{promo_name}</code> — название акции</li>
+            <li><code>{prizes}</code> — список призов</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-chat-text"></i> Сохранённые тексты</div>
+    <div class="card-body">
+        {% if messages %}
+            {% for msg in messages %}
+            <form method="post" action="/settings/messages/update" class="mb-4 pb-3 border-bottom">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">{{ msg.key }}</label>
+                        <small class="text-muted d-block">Обновлено: {{ msg.updated_at.strftime('%d.%m.%Y %H:%M') if msg.updated_at else '-' }}</small>
+                    </div>
+                    <div class="col-md-7">
+                        <input type="hidden" name="key" value="{{ msg.key }}">
+                        <textarea name="text" class="form-control" rows="3">{{ msg.text }}</textarea>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+                    </div>
+                </div>
+            </form>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">Пока нет сохранённых текстов. Добавьте ниже.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="bi bi-plus-circle"></i> Добавить / изменить текст</div>
+    <div class="card-body">
+        <p class="text-muted mb-3">Выберите тип сообщения и введите текст:</p>
+        
+        {% for key, default_text in default_messages %}
+        <form method="post" action="/settings/messages/update" class="mb-3 pb-3 border-bottom">
+            <div class="row align-items-start">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">{{ key }}</label>
+                    <input type="hidden" name="key" value="{{ key }}">
+                </div>
+                <div class="col-md-7">
+                    <textarea name="text" class="form-control" rows="2" placeholder="{{ default_text }}">{% for msg in messages %}{% if msg.key == key %}{{ msg.text }}{% endif %}{% endfor %}</textarea>
+                    <small class="text-muted">По умолчанию: {{ default_text[:80] }}{% if default_text|length > 80 %}...{% endif %}</small>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">Сохранить</button>
+                </div>
+            </div>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

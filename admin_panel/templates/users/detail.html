@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <a href="/users" class="text-decoration-none text-muted">Пользователи</a> / 
+        {{ user_data.full_name or 'Пользователь' }}
+    </h1>
+</div>
+
+{% if message == 'sent' %}
+<div class="alert alert-success-custom mb-4">
+    <i class="bi bi-check-circle"></i> Сообщение отправлено!
+</div>
+{% elif message == 'receipt_added' %}
+<div class="alert alert-success-custom mb-4">
+    <i class="bi bi-check-circle"></i> Чек добавлен!
+</div>
+{% elif message == 'blocked' %}
+<div class="alert alert-warning mb-4">
+    <i class="bi bi-shield-x"></i> Пользователь заблокирован
+</div>
+{% elif message == 'unblocked' %}
+<div class="alert alert-success-custom mb-4">
+    <i class="bi bi-shield-check"></i> Пользователь разблокирован
+</div>
+{% elif message == 'error_empty' %}
+<div class="alert alert-danger mb-4">
+    <i class="bi bi-x-circle"></i> Введите текст или загрузите фото
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person"></i> Профиль</div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th class="text-muted">ID:</th>
+                        <td>{{ user_data.id }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Telegram ID:</th>
+                        <td><code>{{ user_data.telegram_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Имя:</th>
+                        <td>{{ user_data.full_name or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Username:</th>
+                        <td>{% if user_data.username %}@{{ user_data.username }}{% else %}-{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Телефон:</th>
+                        <td>{{ user_data.phone or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Регистрация:</th>
+                        <td>{{ user_data.registered_at.strftime('%d.%m.%Y %H:%M') if user_data.registered_at else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Статус:</th>
+                        <td>
+                            {% if user_data.is_blocked %}
+                            <span class="badge bg-danger">Заблокирован</span>
+                            {% else %}
+                            <span class="badge bg-success">Активен</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header"><i class="bi bi-bar-chart"></i> Статистика</div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="fs-3 fw-bold text-primary">{{ user_data.valid_receipts or 0 }}</div>
+                        <small class="text-muted">Принятых чеков</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="fs-3 fw-bold text-secondary">{{ user_data.total_receipts or 0 }}</div>
+                        <small class="text-muted">Всего чеков</small>
+                    </div>
+                </div>
+                {% if user_data.total_sum %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">Сумма покупок: {{ '%.2f' % (user_data.total_sum / 100) }} ₽</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if user_data.wins %}
+        <div class="card mt-4">
+            <div class="card-header"><i class="bi bi-trophy text-warning"></i> Выигрыши</div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for w in user_data.wins %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{{ w.prize_name or 'Приз' }}</span>
+                        <small class="text-muted">{{ w.created_at.strftime('%d.%m.%Y') if w.created_at else '' }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-8">
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-chat-dots"></i> Написать сообщение</div>
+                    <div class="card-body">
+                        <form method="post" action="/users/{{ user_data.id }}/message" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <textarea name="text" class="form-control" rows="3" placeholder="Текст сообщения..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <input type="file" name="photo" class="form-control" accept="image/*">
+                                <small class="text-muted">Опционально</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-send"></i> Отправить
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-gear"></i> Действия</div>
+                    <div class="card-body d-flex flex-column gap-2">
+                        <form method="post" action="/users/{{ user_data.id }}/add-receipt">
+                            <button type="submit" class="btn btn-outline-success w-100" onclick="return confirm('Добавить чек этому пользователю?')">
+                                <i class="bi bi-plus-circle"></i> Выдать чек
+                            </button>
+                        </form>
+                        
+                        <form method="post" action="/users/{{ user_data.id }}/block">
+                            {% if user_data.is_blocked %}
+                            <button type="submit" class="btn btn-outline-secondary w-100" onclick="return confirm('Разблокировать пользователя?')">
+                                <i class="bi bi-shield-check"></i> Разблокировать
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('Заблокировать пользователя? Он не будет получать рассылки.')">
+                                <i class="bi bi-shield-x"></i> Заблокировать
+                            </button>
+                            {% endif %}
+                        </form>
+                        
+                        {% if user_data.username %}
+                        <a href="https://t.me/{{ user_data.username }}" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-telegram"></i> Открыть в Telegram
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header"><i class="bi bi-receipt"></i> Чеки пользователя</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Статус</th>
+                                <th>Товар</th>
+                                <th>Сумма</th>
+                                <th>Дата</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in receipts %}
+                            <tr>
+                                <td>{{ r.id }}</td>
+                                <td>
+                                    {% if r.status == 'valid' %}
+                                    <span class="badge badge-valid">Принят</span>
+                                    {% elif r.status == 'pending' %}
+                                    <span class="badge badge-pending">Ожидает</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ r.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ r.product_name[:40] if r.product_name else '-' }}{% if r.product_name and r.product_name|length > 40 %}...{% endif %}</td>
+                                <td>{{ '%.2f ₽' % (r.total_sum / 100) if r.total_sum else '-' }}</td>
+                                <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '-' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Нет чеков</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

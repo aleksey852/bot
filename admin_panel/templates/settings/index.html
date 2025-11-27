@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Настройки промо-акции</h1>
+</div>
+
+{% if updated %}
+<div class="alert alert-success-custom mb-4">
+    <i class="bi bi-check-circle"></i> Настройки сохранены! Перезапустите бота для применения изменений.
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-megaphone"></i> Параметры акции</div>
+    <div class="card-body">
+        <p class="text-muted mb-4">Эти настройки сохраняются в .env файл. После изменения перезапустите бота.</p>
+        
+        {% for key, label, value in promo_fields %}
+        <form method="post" action="/settings/update" class="mb-3">
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">{{ label }}</label>
+                    <small class="text-muted d-block">{{ key }}</small>
+                </div>
+                <div class="col-md-7">
+                    <input type="hidden" name="key" value="{{ key }}">
+                    {% if 'PRIZES' in key or 'KEYWORDS' in key %}
+                    <textarea name="value" class="form-control" rows="2">{{ value }}</textarea>
+                    {% else %}
+                    <input type="text" name="value" value="{{ value }}" class="form-control">
+                    {% endif %}
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+                </div>
+            </div>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+
+{% if db_settings %}
+<div class="card">
+    <div class="card-header"><i class="bi bi-database"></i> Настройки из базы данных</div>
+    <div class="card-body">
+        {% for setting in db_settings %}
+        <form method="post" action="/settings/update" class="mb-3">
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">{{ setting.key }}</label>
+                </div>
+                <div class="col-md-7">
+                    <input type="hidden" name="key" value="{{ setting.key }}">
+                    <input type="text" name="value" value="{{ setting.value }}" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">Сохранить</button>
+                </div>
+            </div>
+        </form>
+        {% endfor %}
+        
+        {% if not db_settings %}
+        <p class="text-muted">Нет дополнительных настроек в базе данных</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

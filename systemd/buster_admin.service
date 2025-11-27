@@ -1,0 +1,19 @@
+[Unit]
+Description=Buster Vibe Admin Panel
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=buster
+WorkingDirectory=/opt/buster-vibe-bot
+Environment="PYTHONPATH=/opt/buster-vibe-bot"
+# Multiple workers prevent single request from blocking entire app
+# --timeout 120 gives more time for slow operations
+ExecStart=/opt/buster-vibe-bot/venv/bin/uvicorn admin_panel.app:app --host 127.0.0.1 --port 8000 --workers 2 --timeout-keep-alive 120
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

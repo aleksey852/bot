@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-list-task"></i> Кампании</h1>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Тип</th>
+                        <th>Статус</th>
+                        <th>Запланирована</th>
+                        <th>Отправлено</th>
+                        <th>Ошибок</th>
+                        <th>Создана</th>
+                        <th>Завершена</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in campaigns %}
+                    <tr>
+                        <td>#{{ c.id }}</td>
+                        <td>
+                            {% if c.type == 'broadcast' %}
+                            <span class="badge bg-primary">Рассылка</span>
+                            {% elif c.type == 'raffle' %}
+                            <span class="badge bg-warning text-dark">Розыгрыш</span>
+                            {% elif c.type == 'single_message' %}
+                            <span class="badge bg-info">Личное сообщение</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ c.type }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if c.is_completed %}
+                            <span class="badge badge-completed">✓ Завершена</span>
+                            {% elif c.scheduled_for and c.scheduled_for > now %}
+                            <span class="badge badge-scheduled">⏰ Запланирована</span>
+                            {% else %}
+                            <span class="badge badge-pending">⏳ В очереди</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ c.scheduled_for.strftime('%d.%m.%Y %H:%M') if c.scheduled_for else '-' }}</td>
+                        <td><span class="text-success">{{ c.sent_count or 0 }}</span></td>
+                        <td><span class="text-danger">{{ c.failed_count or 0 }}</span></td>
+                        <td>{{ c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '-' }}</td>
+                        <td>{{ c.completed_at.strftime('%d.%m.%Y %H:%M') if c.completed_at else '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">Нет кампаний</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="/broadcast" class="btn btn-primary me-2"><i class="bi bi-megaphone"></i> Создать рассылку</a>
+    <a href="/raffle" class="btn btn-warning"><i class="bi bi-gift"></i> Создать розыгрыш</a>
+</div>
+{% endblock %}

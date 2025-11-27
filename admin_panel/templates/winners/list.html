@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Победители розыгрышей</h1>
+</div>
+
+{% if raffles %}
+    {% for raffle in raffles %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-trophy text-warning"></i>
+                <strong>{{ raffle.prize_name or 'Розыгрыш' }}</strong>
+            </span>
+            <small class="text-muted">{{ raffle.completed_at.strftime('%d.%m.%Y %H:%M') if raffle.completed_at else raffle.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Telegram ID</th>
+                            <th>Имя</th>
+                            <th>Username</th>
+                            <th>Телефон</th>
+                            <th>Уведомлён</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for w in raffle.winners %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><code>{{ w.telegram_id }}</code></td>
+                            <td>{{ w.full_name or '-' }}</td>
+                            <td>{% if w.username %}@{{ w.username }}{% else %}-{% endif %}</td>
+                            <td>{{ w.phone or '-' }}</td>
+                            <td>
+                                {% if w.notified %}
+                                <span class="badge bg-success"><i class="bi bi-check"></i> Да</span>
+                                {% else %}
+                                <span class="badge bg-warning"><i class="bi bi-clock"></i> Нет</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">Нет победителей</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-trophy" style="font-size: 3rem;"></i>
+        <p class="mt-3">Розыгрышей пока не было</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
