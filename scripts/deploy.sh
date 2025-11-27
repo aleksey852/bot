@@ -1,5 +1,5 @@
 #!/bin/bash
-# Buster Vibe Bot - Deploy Script v2.1 (with EnvironmentFile fix)
+# Buster Vibe Bot - Deploy Script v2.2 (with workers + timeouts fix)
 # Usage: sudo bash scripts/deploy.sh
 
 set -e
@@ -18,7 +18,7 @@ err() { echo -e "${RED}[!]${NC} $1"; exit 1; }
 PROJECT_DIR="/opt/buster-vibe-bot"
 SERVICE_USER="buster"
 
-log "=== Buster Vibe Bot Deploy v2.1 ==="
+log "=== Buster Vibe Bot Deploy v2.2 ==="
 
 # 1. System packages
 log "Installing system packages..."
@@ -87,8 +87,8 @@ LOG_LEVEL=INFO
 SCHEDULER_INTERVAL=30
 MESSAGE_DELAY_SECONDS=0.05
 BROADCAST_BATCH_SIZE=20
-DB_POOL_MIN=5
-DB_POOL_MAX=20
+DB_POOL_MIN=2
+DB_POOL_MAX=10
 STATS_CACHE_TTL=60
 EOF
 chmod 600 "$PROJECT_DIR/.env"
@@ -102,7 +102,7 @@ python3 -m venv "$PROJECT_DIR/venv"
 # 8. Set ownership
 chown -R "$SERVICE_USER:$SERVICE_USER" "$PROJECT_DIR"
 
-# 9. Create systemd services (✅ FIXED: added EnvironmentFile)
+# 9. Create systemd services (v2.2: workers + timeout)
 log "Creating systemd services..."
 
 cat > /etc/systemd/system/buster_bot.service << EOF
@@ -136,7 +136,9 @@ User=$SERVICE_USER
 WorkingDirectory=$PROJECT_DIR
 EnvironmentFile=$PROJECT_DIR/.env
 Environment="PYTHONPATH=$PROJECT_DIR"
-ExecStart=$PROJECT_DIR/venv/bin/uvicorn admin_panel.app:app --host 127.0.0.1 --port 8000
+# FIXED: 2 workers prevent single request from blocking entire app
+# --timeout-graceful-shutdown gives time for long operations
+ExecStart=$PROJECT_DIR/venv/bin/uvicorn admin_panel.app:app --host 127.0.0.1 --port 8000 --workers 2 --timeout-keep-alive 120
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -150,7 +152,7 @@ systemctl daemon-reload
 systemctl enable buster_bot buster_admin
 systemctl restart buster_bot buster_admin
 
-# 10. Setup Nginx (if domain provided)
+# 10. Setup Nginx (if domain provided) - WITH TIMEOUTS
 if [[ -n "$DOMAIN" ]]; then
     log "Setting up Nginx for $DOMAIN..."
     cat > /etc/nginx/sites-available/buster << EOF
@@ -160,12 +162,23 @@ server {
     
     client_max_body_size 10M;
     
+    # Timeouts - prevent 502 on slow operations
+    proxy_connect_timeout 30s;
+    proxy_send_timeout 120s;
+    proxy_read_timeout 120s;
+    send_timeout 120s;
+    
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # WebSocket support (for future)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
     }
 }
 EOF
