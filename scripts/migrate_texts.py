@@ -11,6 +11,10 @@ from database import get_connection
 from utils.config_manager import config_manager
 
 MESSAGES = {
+    # Common
+    "cancel_msg": "Выберите действие 👇\nВаших чеков: {count}",
+    "not_registered": "Сначала /start",
+    
     # User
     "welcome_back": "С возвращением, {name}! 👋\n\nВаших чеков: {count}{days_text}\n\nВыберите действие 👇",
     "welcome_new": "🎉 Добро пожаловать в {promo_name}!\n\nПризы: {prizes}\n\nДля участия введите ваше имя:",

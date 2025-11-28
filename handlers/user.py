@@ -29,8 +29,14 @@ async def cancel_handler(message: Message, state: FSMContext):
     await state.clear()
     user = await get_user_with_stats(message.from_user.id)
     count = user['valid_receipts'] if user else 0
+    
+    cancel_msg = config_manager.get_message(
+        'cancel_msg',
+        "Выберите действие 👇\nВаших чеков: {count}"
+    ).format(count=count)
+    
     await message.answer(
-        f"Выберите действие 👇\nВаших чеков: {count}",
+        cancel_msg,
         reply_markup=get_main_keyboard(config.is_admin(message.from_user.id))
     )
 
@@ -123,7 +129,8 @@ async def command_help(message: Message):
 async def command_status(message: Message):
     user = await get_user_with_stats(message.from_user.id)
     if not user:
-        await message.answer("Сначала /start")
+        not_registered_msg = config_manager.get_message('not_registered', "Сначала /start")
+        await message.answer(not_registered_msg)
         return
     
     status_msg = config_manager.get_message(

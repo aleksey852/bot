@@ -67,7 +67,7 @@ def parse_scheduled_time(time_str: str) -> Optional[datetime]:
         dt = datetime.strptime(clean_str, "%Y-%m-%d %H:%M")
         # Return naive datetime as DB expects TIMESTAMP without timezone
         return dt
-    except:
+    except Exception:
         return None
 
 
@@ -80,7 +80,7 @@ def is_promo_active() -> bool:
         start = datetime.strptime(PROMO_START_DATE, "%Y-%m-%d")
         end = datetime.strptime(PROMO_END_DATE, "%Y-%m-%d")
         return start <= datetime.now() <= end
-    except:
+    except Exception:
         return True
 
 
@@ -88,7 +88,7 @@ def days_until_end() -> int:
     try:
         end = datetime.strptime(PROMO_END_DATE, "%Y-%m-%d")
         return max(0, (end - datetime.now()).days)
-    except:
+    except Exception:
         return 0
 
 

@@ -97,7 +97,7 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
     
     try:
         await processing_msg.delete()
-    except:
+    except Exception:
         pass
     
     if not result:
@@ -230,8 +230,14 @@ async def process_receipt_invalid_type(message: Message, state: FSMContext):
         await state.clear()
         user = await get_user_with_stats(message.from_user.id)
         count = user['valid_receipts'] if user else 0
+        
+        cancel_msg = config_manager.get_message(
+            'cancel_msg',
+            "Выберите действие 👇\nВаших чеков: {count}"
+        ).format(count=count)
+        
         await message.answer(
-            f"Выберите действие 👇\nВаших чеков: {count}",
+            cancel_msg,
             reply_markup=get_main_keyboard(config.is_admin(message.from_user.id))
         )
         return
