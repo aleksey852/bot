@@ -403,7 +403,7 @@ async def get_stats_by_days(days: int = 14) -> List[Dict]:
         return await db.fetch("""
             WITH date_series AS (
                 SELECT generate_series(
-                    CURRENT_DATE - INTERVAL '%s days',
+                    CURRENT_DATE - ($1 || ' days')::interval,
                     CURRENT_DATE,
                     '1 day'::interval
                 )::date AS day
@@ -422,7 +422,7 @@ async def get_stats_by_days(days: int = 14) -> List[Dict]:
                 FROM receipts WHERE status = 'valid' GROUP BY DATE(created_at)
             ) r ON ds.day = r.day
             ORDER BY ds.day
-        """ % days)
+        """, str(days))
 
 
 async def search_users(query: str, limit: int = 20) -> List[Dict]:

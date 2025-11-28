@@ -305,6 +305,7 @@ async def export_winners(message: Message):
     
     import tempfile
     import os
+    import csv
     from aiogram.types import FSInputFile
     
     winners = await get_all_winners_for_export()
@@ -315,13 +316,19 @@ async def export_winners(message: Message):
     # Create temp file
     fd, path = tempfile.mkstemp(suffix=".csv")
     try:
-        with os.fdopen(fd, 'w', encoding='utf-8-sig') as f:
-            f.write("Имя,Телефон,Username,Приз,Дата,Уведомлён\n")
+        with os.fdopen(fd, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Имя", "Телефон", "Username", "Приз", "Дата", "Уведомлён"])
+            
             for w in winners:
-                line = f"{w.get('full_name', '').replace(',', ' ')},{w.get('phone', '')}," \
-                       f"@{w.get('username', '')},{w.get('prize_name', '').replace(',', ' ')}," \
-                       f"{str(w.get('created_at', ''))[:19]},{'Да' if w.get('notified') else 'Нет'}\n"
-                f.write(line)
+                writer.writerow([
+                    w.get('full_name', ''),
+                    w.get('phone', ''),
+                    f"@{w.get('username', '')}",
+                    w.get('prize_name', ''),
+                    str(w.get('created_at', ''))[:19],
+                    'Да' if w.get('notified') else 'Нет'
+                ])
         
         await message.answer_document(
             FSInputFile(path, filename="winners.csv"),

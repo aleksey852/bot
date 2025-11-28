@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status, Form, Uplo
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from jose import jwt, JWTError
 from datetime import datetime, date, timedelta
 from pathlib import Path
@@ -12,6 +13,7 @@ import os
 import json
 import uuid
 import time
+import secrets
 import aiofiles
 import asyncio
 import logging
@@ -41,6 +43,7 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 app = FastAPI(title="Buster Admin")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+app.add_middleware(SessionMiddleware, secret_key=config.ADMIN_SECRET_KEY)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 ALGORITHM = "HS256"
@@ -110,11 +113,32 @@ async def get_current_user(request: Request):
     return username
 
 
+def get_csrf_token(request: Request):
+    token = request.session.get("csrf_token")
+    if not token:
+        token = secrets.token_hex(32)
+        request.session["csrf_token"] = token
+    return token
+
+
+async def verify_csrf_token(request: Request):
+    token = request.session.get("csrf_token")
+    if not token:
+        raise HTTPException(status_code=403, detail="CSRF token missing in session")
+    
+    # Check form data or headers
+    form = await request.form()
+    submitted_token = form.get("csrf_token") or request.headers.get("X-CSRF-Token")
+    
+    if not submitted_token or submitted_token != token:
+        raise HTTPException(status_code=403, detail="CSRF token invalid")
+
+
 # === Auth ===
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request, "csrf_token": get_csrf_token(request)})
 
 
 @app.post("/login")
@@ -153,7 +177,7 @@ async def dashboard(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("dashboard.html", {
         "request": request, "user": user, "stats": stats, "participants": participants,
         "daily_stats": daily_stats, "recent_campaigns": recent_campaigns,
-        "title": "Dashboard"
+        "title": "Dashboard", "csrf_token": get_csrf_token(request)
     })
 
 
@@ -199,11 +223,11 @@ async def settings_page(request: Request, user: str = Depends(get_current_user),
     return templates.TemplateResponse("settings/index.html", {
         "request": request, "user": user, "title": "Настройки",
         "promo_fields": promo_fields, "db_settings": db_settings,
-        "updated": updated
+        "updated": updated, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/settings/update")
+@app.post("/settings/update", dependencies=[Depends(verify_csrf_token)])
 async def update_setting(
     request: Request,
     key: str = Form(...),
@@ -257,11 +281,11 @@ async def support_settings_page(request: Request, user: str = Depends(get_curren
     
     return templates.TemplateResponse("settings/support.html", {
         "request": request, "user": user, "title": "Настройки поддержки",
-        "support_fields": support_fields, "updated": updated
+        "support_fields": support_fields, "updated": updated, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/settings/support/update")
+@app.post("/settings/support/update", dependencies=[Depends(verify_csrf_token)])
 async def update_support_setting(
     request: Request,
     key: str = Form(...),
@@ -315,11 +339,11 @@ async def messages_page(request: Request, user: str = Depends(get_current_user),
     return templates.TemplateResponse("settings/messages.html", {
         "request": request, "user": user, "title": "Тексты сообщений",
         "messages": messages, "default_messages": default_messages,
-        "updated": updated
+        "updated": updated, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/settings/messages/update")
+@app.post("/settings/messages/update", dependencies=[Depends(verify_csrf_token)])
 async def update_message(
     request: Request,
     key: str = Form(...),
@@ -350,7 +374,7 @@ async def users_list(request: Request, user: str = Depends(get_current_user), pa
         "request": request, "user": user, "users": users,
         "page": page, "total_pages": total_pages, "total": total,
         "search_query": q or "",
-        "title": "Пользователи"
+        "title": "Пользователи", "csrf_token": get_csrf_token(request)
     })
 
 
@@ -369,11 +393,11 @@ async def user_detail(request: Request, user_id: int, user: str = Depends(get_cu
     return templates.TemplateResponse("users/detail.html", {
         "request": request, "user": user, "user_data": user_data,
         "receipts": receipts, "title": f"Пользователь #{user_id}",
-        "message": msg
+        "message": msg, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/users/{user_id}/message")
+@app.post("/users/{user_id}/message", dependencies=[Depends(verify_csrf_token)])
 async def send_user_message(
     request: Request,
     user_id: int,
@@ -458,7 +482,7 @@ async def send_user_message(
     )
 
 
-@app.post("/users/{user_id}/add-receipt")
+@app.post("/users/{user_id}/add-receipt", dependencies=[Depends(verify_csrf_token)])
 async def add_user_receipt(
     request: Request,
     user_id: int,
@@ -498,7 +522,7 @@ async def add_user_receipt(
     )
 
 
-@app.post("/users/{user_id}/block")
+@app.post("/users/{user_id}/block", dependencies=[Depends(verify_csrf_token)])
 async def toggle_user_block(
     request: Request,
     user_id: int,
@@ -567,11 +591,11 @@ async def broadcast_page(request: Request, user: str = Depends(get_current_user)
     return templates.TemplateResponse("broadcast/index.html", {
         "request": request, "user": user, "title": "Рассылка",
         "total_users": total_users, "broadcasts": broadcasts,
-        "created": created
+        "created": created, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/broadcast/create")
+@app.post("/broadcast/create", dependencies=[Depends(verify_csrf_token)])
 async def create_broadcast(
     request: Request,
     text: str = Form(None),
@@ -636,11 +660,11 @@ async def raffle_page(request: Request, user: str = Depends(get_current_user), c
     return templates.TemplateResponse("raffle/index.html", {
         "request": request, "user": user, "title": "Розыгрыш",
         "participants": participants, "recent_raffles": recent_raffles,
-        "created": created
+        "created": created, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/raffle/create")
+@app.post("/raffle/create", dependencies=[Depends(verify_csrf_token)])
 async def create_raffle(
     request: Request,
     prize_name: str = Form(...),
@@ -765,17 +789,21 @@ async def backups_list(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("backups/list.html", {
         "request": request, "user": user, "title": "Резервные копии",
         "backups": backups, "total_size_mb": total_size_mb,
-        "disk_free_mb": disk_free_mb
+        "disk_free_mb": disk_free_mb, "csrf_token": get_csrf_token(request)
     })
 
 
-@app.post("/backups/create")
+@app.post("/backups/create", dependencies=[Depends(verify_csrf_token)])
 async def create_backup(request: Request, user: str = Depends(get_current_user)):
     import subprocess
     
     try:
         # Run backup script
         script_path = BASE_DIR / "scripts" / "backup.sh"
+        
+        # Ensure executable
+        os.chmod(script_path, 0o755)
+        
         result = subprocess.run(
             ["bash", str(script_path)],
             capture_output=True,

@@ -90,7 +90,8 @@ def is_promo_active() -> bool:
         start = datetime.strptime(PROMO_START_DATE, "%Y-%m-%d")
         end = datetime.strptime(PROMO_END_DATE, "%Y-%m-%d")
         return start <= datetime.now() <= end
-    except Exception:
+    except Exception as e:
+        print(f"Error checking promo status: {e}")
         return True
 
 
@@ -98,7 +99,8 @@ def days_until_end() -> int:
     try:
         end = datetime.strptime(PROMO_END_DATE, "%Y-%m-%d")
         return max(0, (end - datetime.now()).days)
-    except Exception:
+    except Exception as e:
+        print(f"Error calculating days until end: {e}")
         return 0
 
 

@@ -15,6 +15,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
+from aiogram.types import FSInputFile
 
 import config
 from database import (
@@ -38,7 +39,6 @@ notification_queue = asyncio.Queue()
 
 async def send_message_with_retry(user_id: int, content: dict, max_retries: int = 3) -> bool:
     """Send message with exponential backoff. Supports photo by file_id or path."""
-    from aiogram.types import FSInputFile
     
     for attempt in range(max_retries):
         try:
