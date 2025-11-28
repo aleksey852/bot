@@ -183,23 +183,35 @@ async def _handle_valid_receipt(message: Message, state: FSMContext, result: dic
         return
     
     # Save receipt
-    receipt_id = await add_receipt(
-        user_id=user_db_id,
-        status="valid",
-        data={
-            "dateTime": receipt_data.get("dateTime"),
-            "totalSum": receipt_data.get("totalSum"),
-            "promo_items": [{"name": item.get("name"), "sum": item.get("sum")} 
-                           for item in items if any(kw in item.get("name", "").lower() for kw in target_keywords)][:10]
-        },
-        fiscal_drive_number=fn,
-        fiscal_document_number=fd,
-        fiscal_sign=fp,
-        total_sum=receipt_data.get("totalSum", 0),
-        raw_qr="photo_upload",
-        product_name=found_items[0][:100] if found_items else None
-    )
-    
+    try:
+        receipt_id = await add_receipt(
+            user_id=user_db_id,
+            status="valid",
+            data={
+                "dateTime": receipt_data.get("dateTime"),
+                "totalSum": receipt_data.get("totalSum"),
+                "promo_items": [{"name": item.get("name"), "sum": item.get("sum")} 
+                               for item in items if any(kw in item.get("name", "").lower() for kw in target_keywords)][:10]
+            },
+            fiscal_drive_number=fn,
+            fiscal_document_number=fd,
+            fiscal_sign=fp,
+            total_sum=receipt_data.get("totalSum", 0),
+            raw_qr="photo_upload",
+            product_name=found_items[0][:100] if found_items else None
+        )
+    except Exception as e:
+        # Check for unique violation (asyncpg error)
+        if "unique constraint" in str(e).lower():
+            duplicate_msg = config_manager.get_message(
+                'receipt_duplicate',
+                "ℹ️ Этот чек уже загружен"
+            )
+            await message.answer(duplicate_msg, reply_markup=get_cancel_keyboard())
+            return
+        logger.error(f"Receipt save error: {e}")
+        receipt_id = None
+
     if not receipt_id:
         receipt_save_error = config_manager.get_message('receipt_save_error', "Не удалось сохранить чек")
         await message.answer(receipt_save_error, reply_markup=get_cancel_keyboard())

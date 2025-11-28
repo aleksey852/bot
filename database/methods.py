@@ -27,13 +27,15 @@ def escape_like(text: Optional[str]) -> str:
 
 async def add_user(telegram_id: int, username: str, full_name: str, phone: str) -> int:
     async with get_connection() as db:
-        existing = await db.fetchval("SELECT id FROM users WHERE telegram_id = $1", telegram_id)
-        if existing:
-            return existing
+        # Use ON CONFLICT DO UPDATE to ensure we always get an ID back
+        # even if the user was created concurrently
         return await db.fetchval("""
             INSERT INTO users (telegram_id, username, full_name, phone)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (telegram_id) DO NOTHING RETURNING id
+            ON CONFLICT (telegram_id) DO UPDATE 
+            SET username = EXCLUDED.username, 
+                full_name = EXCLUDED.full_name
+            RETURNING id
         """, telegram_id, username, full_name, phone)
 
 
@@ -214,6 +216,19 @@ async def get_participants_with_ids() -> List[Dict]:
             SELECT DISTINCT u.id as user_id, u.telegram_id, u.full_name, u.username
             FROM users u JOIN receipts r ON u.id = r.user_id WHERE r.status = 'valid'
         """)
+
+
+async def get_raffle_losers(campaign_id: int, limit: int = 1000, offset: int = 0) -> List[Dict]:
+    """Get participants who didn't win in the specified campaign"""
+    async with get_connection() as db:
+        return await db.fetch("""
+            SELECT DISTINCT u.telegram_id
+            FROM users u 
+            JOIN receipts r ON u.id = r.user_id 
+            WHERE r.status = 'valid' 
+            AND u.id NOT IN (SELECT user_id FROM winners WHERE campaign_id = $1)
+            LIMIT $2 OFFSET $3
+        """, campaign_id, limit, offset)
 
 
 async def save_winners_atomic(campaign_id: int, winners_data: List[Dict]) -> int:

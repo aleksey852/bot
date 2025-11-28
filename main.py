@@ -21,7 +21,8 @@ from database import (
     init_db, close_db, get_pending_campaigns, mark_campaign_completed,
     get_user_ids_paginated, get_participants_with_ids, save_winners_atomic,
     get_unnotified_winners, mark_winner_notified, get_campaign,
-    get_broadcast_progress, save_broadcast_progress, delete_broadcast_progress
+    get_broadcast_progress, save_broadcast_progress, delete_broadcast_progress,
+    get_raffle_losers
 )
 from utils.api import init_api_client, close_api_client
 from utils.rate_limiter import init_rate_limiter, close_rate_limiter
@@ -67,6 +68,7 @@ async def send_message_with_retry(user_id: int, content: dict, max_retries: int 
 async def pg_listener():
     """Listen for campaign notifications from PostgreSQL"""
     logger.info("PostgreSQL Listener started")
+    conn = None
     
     try:
         conn = await asyncpg.connect(config.DATABASE_URL)
@@ -88,11 +90,12 @@ async def pg_listener():
     except Exception as e:
         logger.error(f"PostgreSQL Listener error: {e}", exc_info=True)
     finally:
-        try:
-            await conn.remove_listener('new_campaign', on_notification)
-            await conn.close()
-        except:
-            pass
+        if conn:
+            try:
+                await conn.remove_listener('new_campaign', on_notification)
+                await conn.close()
+            except:
+                pass
         logger.info("PostgreSQL Listener stopped")
 
 
@@ -259,6 +262,7 @@ async def execute_raffle(campaign_id: int, content: dict):
     losers = [p for p in all_participants if p['user_id'] not in winner_ids]
     sent, failed = 0, 0
     
+    # Notify winners
     for w in winners_data:
         if shutdown_event.is_set():
             return
@@ -269,14 +273,28 @@ async def execute_raffle(campaign_id: int, content: dict):
             failed += 1
         await asyncio.sleep(config.MESSAGE_DELAY_SECONDS)
     
-    for l in losers:
+    # Notify losers in batches to save memory
+    offset = 0
+    batch_size = 1000
+    
+    while True:
         if shutdown_event.is_set():
             return
-        if await send_message_with_retry(l['telegram_id'], lose_msg):
-            sent += 1
-        else:
-            failed += 1
-        await asyncio.sleep(config.MESSAGE_DELAY_SECONDS)
+            
+        losers_batch = await get_raffle_losers(campaign_id, limit=batch_size, offset=offset)
+        if not losers_batch:
+            break
+            
+        for l in losers_batch:
+            if shutdown_event.is_set():
+                return
+            if await send_message_with_retry(l['telegram_id'], lose_msg):
+                sent += 1
+            else:
+                failed += 1
+            await asyncio.sleep(config.MESSAGE_DELAY_SECONDS)
+            
+        offset += batch_size
     
     await mark_campaign_completed(campaign_id, sent, failed)
     logger.info(f"🎉 Raffle {campaign_id} complete: {sent} notified, {failed} failed")

@@ -55,11 +55,18 @@ async def increment_rate_limit(user_id: int):
         hour_key = f"receipts:h:{user_id}:{now.strftime('%Y%m%d%H')}"
         day_key = f"receipts:d:{user_id}:{now.strftime('%Y%m%d')}"
         
+        # Lua script to increment and set expire only if key is new
+        script = """
+        local current = redis.call("INCR", KEYS[1])
+        if current == 1 then
+            redis.call("EXPIRE", KEYS[1], ARGV[1])
+        end
+        return current
+        """
+        
         pipe = _redis.pipeline()
-        pipe.incr(hour_key)
-        pipe.expire(hour_key, 3600)
-        pipe.incr(day_key)
-        pipe.expire(day_key, 86400)
+        pipe.eval(script, 1, hour_key, 3600)
+        pipe.eval(script, 1, day_key, 86400)
         await pipe.execute()
     except Exception as e:
         logger.error(f"Rate increment error: {e}")

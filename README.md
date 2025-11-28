@@ -26,29 +26,9 @@ cd buster-vibe-bot
 sudo bash scripts/deploy.sh
 ```
 
-## 🔄 Обновление
+### 🔄 Обновление
 
-### Первое обновление (настройка git)
-
-Если проект был развернут вручную без git, выполните эти команды один раз:
-
-```bash
-cd /opt/buster-vibe-bot
-
-# Настройка git
-git config --global --add safe.directory /opt/buster-vibe-bot
-git init
-git remote add origin https://github.com/aleksey852/bot.git
-git fetch
-git reset --hard origin/main
-
-# Запуск обновления
-sudo bash scripts/update.sh
-```
-
-### Последующие обновления
-
-После первой настройки просто выполняйте:
+Для обновления бота просто выполните команду:
 
 ```bash
 sudo bash /opt/buster-vibe-bot/scripts/update.sh

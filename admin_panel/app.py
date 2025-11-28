@@ -414,7 +414,9 @@ async def send_user_message(
         filepath = UPLOADS_DIR / filename
         
         async with aiofiles.open(filepath, 'wb') as f:
-            await f.write(await photo.read())
+            # Stream write to avoid loading large file into memory
+            while content := await photo.read(1024 * 1024):  # 1MB chunks
+                await f.write(content)
         
         content["photo_path"] = str(filepath)
         content["caption"] = text
@@ -588,7 +590,8 @@ async def create_broadcast(
         filepath = UPLOADS_DIR / filename
         
         async with aiofiles.open(filepath, 'wb') as f:
-            await f.write(await photo.read())
+            while content := await photo.read(1024 * 1024):
+                await f.write(content)
         
         content["photo_path"] = str(filepath)
         content["caption"] = text
@@ -662,7 +665,8 @@ async def create_raffle(
         filename = f"win_{uuid.uuid4()}{ext}"
         filepath = UPLOADS_DIR / filename
         async with aiofiles.open(filepath, 'wb') as f:
-            await f.write(await win_photo.read())
+            while content := await win_photo.read(1024 * 1024):
+                await f.write(content)
         win_msg["photo_path"] = str(filepath)
         win_msg["caption"] = win_text
     elif win_text:
@@ -677,7 +681,8 @@ async def create_raffle(
         filename = f"lose_{uuid.uuid4()}{ext}"
         filepath = UPLOADS_DIR / filename
         async with aiofiles.open(filepath, 'wb') as f:
-            await f.write(await lose_photo.read())
+            while content := await lose_photo.read(1024 * 1024):
+                await f.write(content)
         lose_msg["photo_path"] = str(filepath)
         lose_msg["caption"] = lose_text
     elif lose_text:
@@ -726,6 +731,13 @@ async def backups_list(request: Request, user: str = Depends(get_current_user)):
     import os
     
     backup_dir = Path("/var/backups/buster-vibe-bot")
+    # Fallback to local backups if system dir not accessible
+    if not backup_dir.exists():
+        try:
+            backup_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            backup_dir = BASE_DIR / "backups"
+            backup_dir.mkdir(exist_ok=True)
     backups = []
     
     if backup_dir.exists():
@@ -763,8 +775,9 @@ async def create_backup(request: Request, user: str = Depends(get_current_user))
     
     try:
         # Run backup script
+        script_path = BASE_DIR / "scripts" / "backup.sh"
         result = subprocess.run(
-            ["bash", "/opt/buster-vibe-bot/scripts/backup.sh"],
+            ["bash", str(script_path)],
             capture_output=True,
             text=True,
             timeout=300  # 5 minutes timeout

@@ -82,12 +82,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(dirname "$SCRIPT_DIR")"
 
 if [[ -f "$SOURCE_DIR/main.py" ]]; then
-    cp -r "$SOURCE_DIR"/* "$PROJECT_DIR/"
+    # Copy all files including hidden ones (like .git)
+    cp -r "$SOURCE_DIR/." "$PROJECT_DIR/"
 fi
 
 # Configure git safe directory
 if [ -d "$PROJECT_DIR" ]; then
     git config --global --add safe.directory "$PROJECT_DIR"
+    
+    # If .git didn't copy (e.g. not present in source), init it
+    if [ ! -d "$PROJECT_DIR/.git" ]; then
+        log "Initializing git repository..."
+        cd "$PROJECT_DIR"
+        git init
+        git remote add origin https://github.com/aleksey852/bot.git
+        git fetch
+        git reset --hard origin/main
+        cd - > /dev/null
+    fi
 fi
 
 # 4. Get config from user

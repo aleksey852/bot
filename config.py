@@ -12,7 +12,17 @@ load_dotenv()
 
 # === Core ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-ADMIN_IDS: List[int] = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
+def _parse_admin_ids(env_val: str) -> List[int]:
+    if not env_val:
+        return []
+    ids = []
+    for x in env_val.split(","):
+        clean = x.strip()
+        if clean.isdigit():
+            ids.append(int(clean))
+    return ids
+
+ADMIN_IDS: List[int] = _parse_admin_ids(os.getenv("ADMIN_IDS", ""))
 TIMEZONE = pytz.timezone(os.getenv("TIMEZONE", "Europe/Moscow"))
 
 # === Database & Redis ===

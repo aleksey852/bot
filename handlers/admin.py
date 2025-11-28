@@ -303,16 +303,33 @@ async def export_winners(message: Message):
         await message.answer("Победителей нет")
         return
     
-    csv = ["Имя,Телефон,Username,Приз,Дата,Уведомлён"]
-    for w in winners:
-        csv.append(f"{w.get('full_name', '').replace(',', ' ')},{w.get('phone', '')},"
-                   f"@{w.get('username', '')},{w.get('prize_name', '').replace(',', ' ')},"
-                   f"{str(w.get('created_at', ''))[:19]},{'Да' if w.get('notified') else 'Нет'}")
+    import tempfile
+    import os
+    from aiogram.types import FSInputFile
     
-    await message.answer_document(
-        BufferedInputFile("\n".join(csv).encode('utf-8-sig'), filename="winners.csv"),
-        caption=f"📥 {len(winners)} победителей"
-    )
+    winners = await get_all_winners_for_export()
+    if not winners:
+        await message.answer("Победителей нет")
+        return
+    
+    # Create temp file
+    fd, path = tempfile.mkstemp(suffix=".csv")
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8-sig') as f:
+            f.write("Имя,Телефон,Username,Приз,Дата,Уведомлён\n")
+            for w in winners:
+                line = f"{w.get('full_name', '').replace(',', ' ')},{w.get('phone', '')}," \
+                       f"@{w.get('username', '')},{w.get('prize_name', '').replace(',', ' ')}," \
+                       f"{str(w.get('created_at', ''))[:19]},{'Да' if w.get('notified') else 'Нет'}\n"
+                f.write(line)
+        
+        await message.answer_document(
+            FSInputFile(path, filename="winners.csv"),
+            caption=f"📥 {len(winners)} победителей"
+        )
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
 
 
 # === Manual Receipt ===
