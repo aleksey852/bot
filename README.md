@@ -200,7 +200,28 @@ sudo systemctl restart buster_admin
 sudo bash scripts/optimize_server.sh [RAM_GB]
 ```
 
-### 🔧 Оптимизация при увеличении RAM
+### � Смена API ключа проверки чеков
+
+Если нужно изменить токен ProverkaCheka:
+
+```bash
+# Способ 1: Редактировать вручную
+nano /opt/buster-vibe-bot/.env
+# Найдите PROVERKA_CHEKA_TOKEN и измените значение
+# Сохраните: Ctrl+O, Enter, Ctrl+X
+
+# Способ 2: Быстрая замена (замените NEW_TOKEN на ваш токен)
+sudo sed -i 's/^PROVERKA_CHEKA_TOKEN=.*/PROVERKA_CHEKA_TOKEN=NEW_TOKEN/' /opt/buster-vibe-bot/.env
+
+# Перезапустите бота
+sudo systemctl restart buster_bot
+
+# Проверьте
+grep PROVERKA_CHEKA_TOKEN /opt/buster-vibe-bot/.env
+sudo systemctl status buster_bot
+```
+
+### �🔧 Оптимизация при увеличении RAM
 
 Если вы улучшили сервер (добавили RAM), запустите скрипт переоптимизации:
 
