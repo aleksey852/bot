@@ -727,7 +727,7 @@ async def campaigns_list(request: Request, user: str = Depends(get_current_user)
     
     return templates.TemplateResponse("campaigns/list.html", {
         "request": request, "user": user, "title": "Кампании",
-        "campaigns": campaigns
+        "campaigns": campaigns, "now": datetime.now()
     })
 
 

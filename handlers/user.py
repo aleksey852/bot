@@ -201,48 +201,47 @@ def _format_receipts(receipts: list, page: int, total: int) -> str:
 
 @router.message(F.text == "ℹ️ FAQ")
 async def show_faq(message: Message):
-    await message.answer("❓ Частые вопросы\n\nВыберите тему:", reply_markup=get_faq_keyboard())
+    faq_title = config_manager.get_message('faq_title', "❓ Частые вопросы\n\nВыберите тему:")
+    await message.answer(faq_title, reply_markup=get_faq_keyboard())
 
 
 @router.callback_query(F.data == "faq_how")
 async def faq_how(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "🎯 Как участвовать?\n\n1. Купите акционные товары\n2. Сохраните чек\n"
-        "3. Сфотографируйте QR-код\n4. Отправьте фото в бот\n5. Ждите розыгрыша!\n\n"
-        "💡 Чем больше чеков — тем выше шансы",
-        reply_markup=get_faq_back_keyboard()
+    text = config_manager.get_message(
+        'faq_how',
+        "🎯 Как участвовать?\n\n1. Купите акционные товары\n2. Сохраните чек\n3. Сфотографируйте QR-код\n4. Отправьте фото в бот\n5. Ждите розыгрыша!\n\n💡 Чем больше чеков — тем выше шансы"
     )
+    await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()
 
 
 @router.callback_query(F.data == "faq_limit")
 async def faq_limit(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "🧾 Сколько чеков можно загрузить?\n\nОграничений нет!\n\n"
-        "Важно:\n• Каждый чек — один раз\n• Нужны акционные товары\n• Чек не старше 30 дней",
-        reply_markup=get_faq_back_keyboard()
+    text = config_manager.get_message(
+        'faq_limit',
+        "🧾 Сколько чеков можно загрузить?\n\nОграничений нет!\n\nВажно:\n• Каждый чек — один раз\n• Нужны акционные товары\n• Чек не старше 30 дней"
     )
+    await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()
 
 
 @router.callback_query(F.data == "faq_win")
 async def faq_win(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "🏆 Как узнать о выигрыше?\n\nМы пришлём сообщение в этот бот!\n\n"
-        "Убедитесь, что уведомления включены",
-        reply_markup=get_faq_back_keyboard()
+    text = config_manager.get_message(
+        'faq_win',
+        "🏆 Как узнать о выигрыше?\n\nМы пришлём сообщение в этот бот!\n\nУбедитесь, что уведомления включены"
     )
+    await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()
 
 
 @router.callback_query(F.data == "faq_reject")
 async def faq_reject(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "❌ Почему чек не принят?\n\n"
-        "• QR-код нечёткий\n• Нет акционных товаров\n• Чек старше 30 дней\n• Уже загружен\n\n"
-        "💡 Свежий чек? Подождите 5-10 минут",
-        reply_markup=get_faq_back_keyboard()
+    text = config_manager.get_message(
+        'faq_reject',
+        "❌ Почему чек не принят?\n\n• QR-код нечёткий\n• Нет акционных товаров\n• Чек старше 30 дней\n• Уже загружен\n\n💡 Свежий чек? Подождите 5-10 минут"
     )
+    await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()
 
 
@@ -250,26 +249,30 @@ async def faq_reject(callback: CallbackQuery):
 async def faq_dates(callback: CallbackQuery):
     days = config.days_until_end()
     status = f"Осталось: {days} дн." if days > 0 else "Акция завершена"
-    await callback.message.edit_text(
-        f"📅 Сроки акции\n\nНачало: {config.PROMO_START_DATE}\n"
-        f"Окончание: {config.PROMO_END_DATE}\n\n{status}",
-        reply_markup=get_faq_back_keyboard()
-    )
+    text = config_manager.get_message(
+        'faq_dates',
+        "📅 Сроки акции\n\nНачало: {start}\nОкончание: {end}\n\n{status}"
+    ).format(start=config.PROMO_START_DATE, end=config.PROMO_END_DATE, status=status)
+    
+    await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()
 
 
 @router.callback_query(F.data == "faq_prizes")
 async def faq_prizes(callback: CallbackQuery):
-    await callback.message.edit_text(
-        f"🎁 Призы\n\n{config.PROMO_PRIZES}\n\nБольше чеков = выше шансы!",
-        reply_markup=get_faq_back_keyboard()
-    )
+    text = config_manager.get_message(
+        'faq_prizes',
+        "🎁 Призы\n\n{prizes}\n\nБольше чеков = выше шансы!"
+    ).format(prizes=config.PROMO_PRIZES)
+    
+    await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()
 
 
 @router.callback_query(F.data == "faq_back")
 async def faq_back(callback: CallbackQuery):
-    await callback.message.edit_text("❓ Частые вопросы\n\nВыберите тему:", reply_markup=get_faq_keyboard())
+    faq_title = config_manager.get_message('faq_title', "❓ Частые вопросы\n\nВыберите тему:")
+    await callback.message.edit_text(faq_title, reply_markup=get_faq_keyboard())
     await callback.answer()
 
 
@@ -277,4 +280,5 @@ async def faq_back(callback: CallbackQuery):
 
 @router.message(F.text == "🆘 Поддержка")
 async def show_support(message: Message):
-    await message.answer("🆘 Нужна помощь?\n\nНапишите нам!", reply_markup=get_support_keyboard())
+    text = config_manager.get_message('support_msg', "🆘 Нужна помощь?\n\nНапишите нам!")
+    await message.answer(text, reply_markup=get_support_keyboard())

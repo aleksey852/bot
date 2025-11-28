@@ -126,6 +126,12 @@ async def scheduler():
                     
                     campaign = await get_campaign(campaign_id)
                     if campaign and not campaign.get('is_completed'):
+                        # Check if scheduled for future
+                        scheduled_for = campaign.get('scheduled_for')
+                        if scheduled_for and scheduled_for > config.get_now().replace(tzinfo=None):
+                            logger.info(f"⏳ Campaign {campaign_id} scheduled for {scheduled_for}, skipping immediate execution")
+                            continue
+                            
                         await process_campaign(campaign)
                     else:
                         logger.debug(f"Campaign {campaign_id} already completed or not found")
