@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to update Buster Vibe Bot code and restart services
+# Universal Update Script for Buster Vibe Bot
 # Usage: sudo bash scripts/update.sh
 
 set -e
@@ -23,94 +23,63 @@ fi
 
 echo "=== Updating Buster Vibe Bot ==="
 
-# Get directory of this script
+# 1. Update Code
+log "Updating code..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(dirname "$SCRIPT_DIR")"
 
-log "Stopping services..."
-systemctl stop buster_admin || true
-systemctl stop buster_bot || true
-sleep 2
+# If running from within the project dir (git repo), pull changes
+if [ -d "$PROJECT_DIR/.git" ]; then
+    log "Pulling latest changes from git..."
+    cd "$PROJECT_DIR"
+    # Fix ownership to allow git pull as root (safe in this context)
+    git config --global --add safe.directory "$PROJECT_DIR"
+    git pull origin main || warn "Git pull failed, continuing with local files..."
+    cd - > /dev/null
+elif [ -d "$SOURCE_DIR/.git" ]; then
+    # If source is a git repo but target isn't (or we are deploying from a separate dir)
+    log "Syncing files from $SOURCE_DIR to $PROJECT_DIR..."
+    rsync -av --exclude 'venv' --exclude '.git' --exclude '__pycache__' --exclude '.env' "$SOURCE_DIR/" "$PROJECT_DIR/"
+else
+    # Fallback: just rsync
+    log "Syncing files from $SOURCE_DIR to $PROJECT_DIR..."
+    rsync -av --exclude 'venv' --exclude '.git' --exclude '__pycache__' --exclude '.env' "$SOURCE_DIR/" "$PROJECT_DIR/"
+fi
 
-log "Copying files from $SOURCE_DIR to $PROJECT_DIR..."
-# Copy all files, excluding venv and .git
-rsync -av --exclude 'venv' --exclude '.git' --exclude '__pycache__' --exclude '.env' "$SOURCE_DIR/" "$PROJECT_DIR/"
-
+# 2. Permissions
 log "Setting permissions..."
 chown -R "$SERVICE_USER:$SERVICE_USER" "$PROJECT_DIR"
 chmod +x "$PROJECT_DIR/scripts/"*.sh
 
-log "Installing/updating dependencies..."
-"$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
-
-# Update systemd services
-log "Updating systemd services..."
-cat > /etc/systemd/system/buster_bot.service << EOF
-[Unit]
-Description=Buster Vibe Telegram Bot
-After=network.target postgresql.service redis-server.service
-
-[Service]
-Type=simple
-User=$SERVICE_USER
-WorkingDirectory=$PROJECT_DIR
-EnvironmentFile=$PROJECT_DIR/.env
-ExecStart=$PROJECT_DIR/venv/bin/python main.py
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-cat > /etc/systemd/system/buster_admin.service << EOF
-[Unit]
-Description=Buster Vibe Admin Panel
-After=network.target postgresql.service
-
-[Service]
-Type=simple
-User=$SERVICE_USER
-WorkingDirectory=$PROJECT_DIR
-EnvironmentFile=$PROJECT_DIR/.env
-Environment="PYTHONPATH=$PROJECT_DIR"
-# 2 workers prevent single request from blocking entire app
-ExecStart=$PROJECT_DIR/venv/bin/uvicorn admin_panel.app:app --host 127.0.0.1 --port 8000 --workers 2 --timeout-keep-alive 120
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-
-# Update nginx config if exists
-if [[ -f /etc/nginx/sites-available/buster ]]; then
-    log "Updating nginx timeouts..."
-    # Check if timeouts already configured
-    if ! grep -q "proxy_read_timeout" /etc/nginx/sites-available/buster; then
-        # Add timeouts after client_max_body_size line
-        sed -i '/client_max_body_size/a\    \n    # Timeouts - prevent 502 on slow operations\n    proxy_connect_timeout 30s;\n    proxy_send_timeout 120s;\n    proxy_read_timeout 120s;\n    send_timeout 120s;' /etc/nginx/sites-available/buster
-        nginx -t && systemctl reload nginx
-        log "✅ Nginx timeouts configured"
-    else
-        log "Nginx timeouts already configured"
-    fi
+# 3. Dependencies
+log "Updating dependencies..."
+if [ -f "$PROJECT_DIR/requirements.txt" ]; then
+    sudo -u "$SERVICE_USER" "$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 fi
 
-log "Starting services..."
-systemctl start buster_bot
-sleep 3
-systemctl start buster_admin
+# 4. Migrations (Texts)
+log "Running migrations..."
+if [ -f "$PROJECT_DIR/scripts/migrate_texts.py" ]; then
+    log "Migrating texts..."
+    cd "$PROJECT_DIR"
+    sudo -u "$SERVICE_USER" "$PROJECT_DIR/venv/bin/python" scripts/migrate_texts.py || warn "Text migration failed"
+    cd - > /dev/null
+fi
 
-log "=== Update Complete! ==="
-echo ""
+# 5. Server Optimization Check
+if [ ! -f /swapfile ] && [ $(free -m | awk '/^Mem:/{print $2}') -lt 2000 ]; then
+    warn "Low memory detected and no swapfile found."
+    warn "Run 'sudo bash scripts/deploy.sh' to apply server optimizations."
+fi
+
+# 6. Restart Services
+log "Restarting services..."
+systemctl restart buster_bot
+systemctl restart buster_admin
+
+# 7. Check Status
+sleep 3
 systemctl is-active --quiet buster_bot && log "✅ Bot is running" || warn "⚠️ Bot may have issues"
 systemctl is-active --quiet buster_admin && log "✅ Admin panel is running" || warn "⚠️ Admin panel may have issues"
-echo ""
-log "Check logs: sudo journalctl -u buster_admin -f"
+
+log "=== Update Complete! ==="
