@@ -717,6 +717,68 @@ async def create_raffle(
     )
 
 
+
+# === Backups ===
+
+@app.get("/backups", response_class=HTMLResponse)
+async def backups_list(request: Request, user: str = Depends(get_current_user)):
+    from pathlib import Path
+    import os
+    
+    backup_dir = Path("/var/backups/buster-vibe-bot")
+    backups = []
+    
+    if backup_dir.exists():
+        # Get all backup files
+        for file in sorted(backup_dir.glob("backup_*.sql.gz"), reverse=True):
+            stat = file.stat()
+            backups.append({
+                "filename": file.name,
+                "size": stat.st_size,
+                "size_mb": round(stat.st_size / 1024 / 1024, 2),
+                "created": datetime.fromtimestamp(stat.st_mtime),
+                "path": str(file)
+            })
+    
+    # Calculate total size
+    total_size_mb = sum(b['size_mb'] for b in backups)
+    
+    # Get disk space info
+    disk_free_mb = 0
+    if backup_dir.exists():
+        import shutil
+        stat = shutil.disk_usage(backup_dir)
+        disk_free_mb = round(stat.free / 1024 / 1024, 2)
+    
+    return templates.TemplateResponse("backups/list.html", {
+        "request": request, "user": user, "title": "Резервные копии",
+        "backups": backups, "total_size_mb": total_size_mb,
+        "disk_free_mb": disk_free_mb
+    })
+
+
+@app.post("/backups/create")
+async def create_backup(request: Request, user: str = Depends(get_current_user)):
+    import subprocess
+    
+    try:
+        # Run backup script
+        result = subprocess.run(
+            ["bash", "/opt/buster-vibe-bot/scripts/backup.sh"],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout
+        )
+        
+        if result.returncode == 0:
+            return RedirectResponse(url="/backups?created=1", status_code=status.HTTP_303_SEE_OTHER)
+        else:
+            return RedirectResponse(url="/backups?error=1", status_code=status.HTTP_303_SEE_OTHER)
+    except Exception as e:
+        logger.error(f"Backup creation failed: {e}")
+        return RedirectResponse(url="/backups?error=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
 # === Campaigns list ===
 
 @app.get("/campaigns", response_class=HTMLResponse)
@@ -729,6 +791,7 @@ async def campaigns_list(request: Request, user: str = Depends(get_current_user)
         "request": request, "user": user, "title": "Кампании",
         "campaigns": campaigns, "now": datetime.now()
     })
+
 
 
 # === Startup/Shutdown ===

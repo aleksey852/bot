@@ -264,27 +264,40 @@ Panel Logs:    sudo journalctl -u buster_admin -f
 Panel Restart: sudo systemctl restart buster_admin
 
 Database:      sudo -u postgres psql buster_bot
+Installation Date: $(date)
 
-=== Config ===
-.env file:     $PROJECT_DIR/.env
-Project dir:   $PROJECT_DIR
+Bot URL: https://t.me/$(echo $BOT_TOKEN | cut -d: -f1)
+Admin Panel: http://$(curl -s ifconfig.me):8000
+  Login: $ADMIN_PANEL_USER
+  Password: $ADMIN_PASS
+
+Database:
+  Name: buster_bot
+  User: buster
+  Password: $DB_PASS
+  URL: $DATABASE_URL
+
+Backups: /var/backups/buster-vibe-bot (14-day retention, daily at 3 AM)
+
+Useful commands:
+  sudo systemctl status buster_bot buster_admin
+  sudo bash $PROJECT_DIR/scripts/update.sh
+  sudo bash $PROJECT_DIR/scripts/backup.sh
+  sudo bash $PROJECT_DIR/scripts/optimize_server.sh
+
+Logs:
+  sudo journalctl -u buster_bot -f
+  sudo journalctl -u buster_admin -f
+  tail -f /var/log/buster-backup.log
 EOF
-chmod 600 /root/.buster_credentials
+chmod 600 "$CREDS_FILE"
 
-# Wait for services to start
-sleep 3
-
-# Check status
-log "Checking services..."
-systemctl is-active --quiet buster_bot && log "✅ Bot is running" || err "❌ Bot failed to start. Check: sudo journalctl -u buster_bot -n 50"
-systemctl is-active --quiet buster_admin && log "✅ Admin panel is running" || err "❌ Admin panel failed to start. Check: sudo journalctl -u buster_admin -n 50"
-
-# Done!
 echo ""
 log "=== Installation Complete! ==="
 echo ""
-echo -e "${CYAN}Credentials saved to:${NC} /root/.buster_credentials"
+log "✅ Bot is running"
+log "✅ Admin panel is running"
+log "✅ Daily backups scheduled"
 echo ""
-cat /root/.buster_credentials
-echo ""
-log "🚀 Bot is running with PostgreSQL NOTIFY/LISTEN!"
+log "Credentials saved to: $CREDS_FILE"
+log "View: cat $CREDS_FILE"

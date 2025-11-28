@@ -66,6 +66,7 @@ MESSAGES = {
 
 async def migrate():
     print("🚀 Starting text migration...")
+    print("ℹ️  Existing texts will NOT be overwritten - only new messages will be added")
     
     # Initialize DB pool
     from database import init_db
