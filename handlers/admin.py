@@ -15,8 +15,6 @@ from database import (
     get_all_winners_for_export, add_receipt, get_user_by_id, get_user_by_username, get_user_by_phone,
     get_total_users_count
 )
-    get_total_users_count
-)
 from utils.config_manager import config_manager
 import config
 

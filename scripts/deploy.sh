@@ -85,6 +85,11 @@ if [[ -f "$SOURCE_DIR/main.py" ]]; then
     cp -r "$SOURCE_DIR"/* "$PROJECT_DIR/"
 fi
 
+# Configure git safe directory
+if [ -d "$PROJECT_DIR" ]; then
+    git config --global --add safe.directory "$PROJECT_DIR"
+fi
+
 # 4. Get config from user
 echo ""
 read -p "Bot Token: " BOT_TOKEN
