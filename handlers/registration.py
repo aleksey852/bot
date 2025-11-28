@@ -7,6 +7,7 @@ import re
 from utils.states import Registration
 from keyboards import get_contact_keyboard, get_main_keyboard, get_start_keyboard
 from database import add_user
+from utils.config_manager import config_manager
 import config
 
 router = Router()
@@ -17,16 +18,23 @@ PHONE_PATTERN = re.compile(r'^\+?[0-9]{10,15}$')
 async def process_name(message: Message, state: FSMContext):
     if message.text == "❌ Отмена":
         await state.clear()
-        await message.answer("Хорошо! Возвращайтесь 👋", reply_markup=get_start_keyboard())
+        reg_cancel_msg = config_manager.get_message('reg_cancel', "Хорошо! Возвращайтесь 👋")
+        await message.answer(reg_cancel_msg, reply_markup=get_start_keyboard())
         return
     
     if not message.text or len(message.text) < 2 or len(message.text) > 100:
-        await message.answer("Введите имя (2-100 символов)")
+        reg_name_error_msg = config_manager.get_message('reg_name_error', "Введите имя (2-100 символов)")
+        await message.answer(reg_name_error_msg)
         return
     
     await state.update_data(name=message.text.strip())
+    reg_phone_prompt = config_manager.get_message(
+        'reg_phone_prompt',
+        "Отлично, {name}! 👋\n\nОтправьте номер телефона:"
+    ).format(name=message.text)
+    
     await message.answer(
-        f"Отлично, {message.text}! 👋\n\nОтправьте номер телефона:",
+        reg_phone_prompt,
         reply_markup=get_contact_keyboard()
     )
     await state.set_state(Registration.phone)
@@ -36,7 +44,8 @@ async def process_name(message: Message, state: FSMContext):
 async def process_phone(message: Message, state: FSMContext):
     if message.text == "❌ Отмена":
         await state.clear()
-        await message.answer("Хорошо! Возвращайтесь 👋", reply_markup=get_start_keyboard())
+        reg_cancel_msg = config_manager.get_message('reg_cancel', "Хорошо! Возвращайтесь 👋")
+        await message.answer(reg_cancel_msg, reply_markup=get_start_keyboard())
         return
     
     phone = None
@@ -45,11 +54,13 @@ async def process_phone(message: Message, state: FSMContext):
     elif message.text:
         clean = re.sub(r'\D', '', message.text)
         if not PHONE_PATTERN.match(clean) and not PHONE_PATTERN.match(message.text.strip()):
-            await message.answer("❌ Неверный формат. Введите как +79991234567")
+            reg_phone_error_msg = config_manager.get_message('reg_phone_error', "❌ Неверный формат. Введите как +79991234567")
+            await message.answer(reg_phone_error_msg)
             return
         phone = message.text.strip()
     else:
-        await message.answer("Отправьте номер телефона")
+        reg_phone_request_msg = config_manager.get_message('reg_phone_request', "Отправьте номер телефона")
+        await message.answer(reg_phone_request_msg)
         return
     
     data = await state.get_data()
@@ -61,9 +72,12 @@ async def process_phone(message: Message, state: FSMContext):
     )
     
     await state.clear()
+    reg_success_msg = config_manager.get_message(
+        'reg_success',
+        "✅ Регистрация завершена!\n\n1. Купите акционные товары\n2. Сфотографируйте QR-код\n3. Загрузите сюда\n\nАкция: {start} — {end}\n\n👇 Загрузите первый чек"
+    ).format(start=config.PROMO_START_DATE, end=config.PROMO_END_DATE)
+    
     await message.answer(
-        f"✅ Регистрация завершена!\n\n"
-        f"1. Купите акционные товары\n2. Сфотографируйте QR-код\n3. Загрузите сюда\n\n"
-        f"Акция: {config.PROMO_START_DATE} — {config.PROMO_END_DATE}\n\n👇 Загрузите первый чек",
+        reg_success_msg,
         reply_markup=get_main_keyboard(config.is_admin(message.from_user.id))
     )

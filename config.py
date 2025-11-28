@@ -62,8 +62,11 @@ def parse_scheduled_time(time_str: str) -> Optional[datetime]:
     if not time_str:
         return None
     try:
-        dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M")
-        return TIMEZONE.localize(dt)
+        # Handle both space (manual) and T (datetime-local) separators
+        clean_str = time_str.replace("T", " ")
+        dt = datetime.strptime(clean_str, "%Y-%m-%d %H:%M")
+        # Return naive datetime as DB expects TIMESTAMP without timezone
+        return dt
     except:
         return None
 

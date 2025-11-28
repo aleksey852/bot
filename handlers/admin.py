@@ -15,6 +15,9 @@ from database import (
     get_all_winners_for_export, add_receipt, get_user_by_id, get_user_by_username, get_user_by_phone,
     get_total_users_count
 )
+    get_total_users_count
+)
+from utils.config_manager import config_manager
 import config
 
 logger = logging.getLogger(__name__)
@@ -40,13 +43,21 @@ async def show_stats(message: Message):
     participants = await get_participants_count()
     conversion = (participants / stats['total_users'] * 100) if stats['total_users'] else 0
     
-    await message.answer(
-        f"📊 Статистика\n\n"
-        f"👥 Пользователи: {stats['total_users']}\n   сегодня: +{stats['users_today']}\n\n"
-        f"🧾 Чеки: {stats['total_receipts']}\n   принято: {stats['valid_receipts']}\n   сегодня: +{stats['receipts_today']}\n\n"
-        f"🎯 Участников: {participants}\n📈 Конверсия: {conversion:.1f}%\n\n"
-        f"🏆 Победителей: {stats['total_winners']}"
+    stats_msg = config_manager.get_message(
+        'stats_msg',
+        "📊 Статистика\n\n👥 Пользователи: {users}\n   сегодня: +{users_today}\n\n🧾 Чеки: {receipts}\n   принято: {valid}\n   сегодня: +{receipts_today}\n\n🎯 Участников: {participants}\n📈 Конверсия: {conversion:.1f}%\n\n🏆 Победителей: {winners}"
+    ).format(
+        users=stats['total_users'],
+        users_today=stats['users_today'],
+        receipts=stats['total_receipts'],
+        valid=stats['valid_receipts'],
+        receipts_today=stats['receipts_today'],
+        participants=participants,
+        conversion=conversion,
+        winners=stats['total_winners']
     )
+    
+    await message.answer(stats_msg)
 
 
 # === Broadcast ===

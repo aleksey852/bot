@@ -25,6 +25,50 @@ log "Installing system packages..."
 apt-get update
 apt-get install -y python3 python3-pip python3-venv postgresql postgresql-contrib redis-server nginx certbot python3-certbot-nginx
 
+# 1.5 Server Optimization (for 1GB RAM)
+log "Optimizing server for 1GB RAM..."
+
+# Swap
+if [ ! -f /swapfile ]; then
+    log "Creating 2GB Swap..."
+    fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# Sysctl
+log "Tuning sysctl..."
+cat > /etc/sysctl.d/99-buster-optimization.conf << EOF
+vm.swappiness=10
+vm.overcommit_memory=1
+EOF
+sysctl -p /etc/sysctl.d/99-buster-optimization.conf
+
+# PostgreSQL Tuning
+log "Tuning PostgreSQL..."
+PG_CONF=$(find /etc/postgresql -name postgresql.conf | head -n 1)
+if [ -n "$PG_CONF" ]; then
+    # 128MB shared buffers (1/8 of RAM is conservative but safe for 1GB)
+    sed -i "s/#shared_buffers = 128MB/shared_buffers = 128MB/" "$PG_CONF"
+    sed -i "s/shared_buffers = .*/shared_buffers = 128MB/" "$PG_CONF"
+    # Reduce max connections to save memory
+    sed -i "s/#max_connections = 100/max_connections = 50/" "$PG_CONF"
+    sed -i "s/max_connections = .*/max_connections = 50/" "$PG_CONF"
+    systemctl restart postgresql
+fi
+
+# Redis Tuning
+log "Tuning Redis..."
+REDIS_CONF="/etc/redis/redis.conf"
+if [ -f "$REDIS_CONF" ]; then
+    # Limit Redis to 256MB
+    sed -i "s/# maxmemory <bytes>/maxmemory 256mb/" "$REDIS_CONF"
+    sed -i "s/# maxmemory-policy noeviction/maxmemory-policy allkeys-lru/" "$REDIS_CONF"
+    systemctl restart redis-server
+fi
+
 # 2. Create service user
 if ! id "$SERVICE_USER" &>/dev/null; then
     useradd -m -s /bin/bash "$SERVICE_USER"
@@ -90,6 +134,10 @@ BROADCAST_BATCH_SIZE=20
 DB_POOL_MIN=2
 DB_POOL_MAX=10
 STATS_CACHE_TTL=60
+RECEIPTS_RATE_LIMIT=50
+RECEIPTS_DAILY_LIMIT=200
+METRICS_ENABLED=true
+METRICS_PORT=9090
 EOF
 chmod 600 "$PROJECT_DIR/.env"
 

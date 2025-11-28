@@ -91,24 +91,29 @@ async def show_profile(message: Message):
     days = config.days_until_end()
     days_text = f"\n\nДо конца акции: {days} дн." if days > 0 else ""
     
-    await message.answer(
-        f"👤 Ваш профиль\n\n"
-        f"Имя: {user['full_name']}\nТелефон: {user['phone']}\n\n"
-        f"📊 Чеков загружено: {user['total_receipts']}\n"
-        f"Чеков принято: {user['valid_receipts']}{wins_text}{days_text}"
+    profile_msg = config_manager.get_message(
+        'profile',
+        "👤 Ваш профиль\n\nИмя: {name}\nТелефон: {phone}\n\n📊 Чеков загружено: {total}\nЧеков принято: {valid}{wins_text}{days_text}"
+    ).format(
+        name=user['full_name'],
+        phone=user['phone'],
+        total=user['total_receipts'],
+        valid=user['valid_receipts'],
+        wins_text=wins_text,
+        days_text=days_text
     )
+    
+    await message.answer(profile_msg)
 
 
 @router.message(Command("help"))
 async def command_help(message: Message):
+    help_msg = config_manager.get_message(
+        'help',
+        "🤖 Что умеет бот:\n\n🧾 Загрузить чек — отправьте QR-код\n👤 Мой профиль — ваша статистика\n📋 Мои чеки — история загрузок\nℹ️ FAQ — частые вопросы\n🆘 Поддержка — связь с нами\n\nКоманды: /start /help /status /cancel"
+    )
     await message.answer(
-        "🤖 Что умеет бот:\n\n"
-        "🧾 Загрузить чек — отправьте QR-код\n"
-        "👤 Мой профиль — ваша статистика\n"
-        "📋 Мои чеки — история загрузок\n"
-        "ℹ️ FAQ — частые вопросы\n"
-        "🆘 Поддержка — связь с нами\n\n"
-        "Команды: /start /help /status /cancel",
+        help_msg,
         reply_markup=get_main_keyboard(config.is_admin(message.from_user.id))
     )
 
@@ -120,7 +125,16 @@ async def command_status(message: Message):
     if not user:
         await message.answer("Сначала /start")
         return
-    await message.answer(f"📊 {user['full_name']}\n\nЧеков: {user['valid_receipts']}\nДо конца: {config.days_until_end()} дн.")
+    
+    status_msg = config_manager.get_message(
+        'status',
+        "📊 {name}\n\nЧеков: {valid}\nДо конца: {days} дн."
+    ).format(
+        name=user['full_name'],
+        valid=user['valid_receipts'],
+        days=config.days_until_end()
+    )
+    await message.answer(status_msg)
 
 
 @router.message(F.text == "📋 Мои чеки")
@@ -132,7 +146,11 @@ async def show_receipts(message: Message):
     
     total = user['total_receipts']
     if total == 0:
-        await message.answer("📋 У вас пока нет чеков\n\nНажмите «🧾 Загрузить чек»")
+        no_receipts_msg = config_manager.get_message(
+            'no_receipts',
+            "📋 У вас пока нет чеков\n\nНажмите «🧾 Загрузить чек»"
+        )
+        await message.answer(no_receipts_msg)
         return
     
     receipts = await get_user_receipts(user['id'], limit=RECEIPTS_PER_PAGE, offset=0)
@@ -168,7 +186,8 @@ async def receipts_current_page(callback: CallbackQuery):
 
 
 def _format_receipts(receipts: list, page: int, total: int) -> str:
-    lines = [f"📋 Ваши чеки ({total})\n"]
+    header = config_manager.get_message('receipts_list', "📋 Ваши чеки ({total})\n").format(total=total)
+    lines = [header]
     for r in receipts:
         status = "✅" if r['status'] == 'valid' else "❌"
         date = str(r['created_at'])[:10] if r.get('created_at') else ""
