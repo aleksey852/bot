@@ -243,7 +243,8 @@ EOF
 fi
 
 # 11. Save credentials
-cat > /root/.buster_credentials << EOF
+CREDS_FILE="/root/buster_credentials.txt"
+cat > "$CREDS_FILE" << EOF
 === Buster Vibe Bot Credentials ===
 Database: buster_bot
 Database User: buster

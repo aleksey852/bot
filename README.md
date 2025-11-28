@@ -19,10 +19,9 @@
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/aleksey852/bot_promo.git buster-vibe-bot
+git clone https://github.com/aleksey852/bot.git buster-vibe-bot
 cd buster-vibe-bot
 
-# Запустите установку
 # Запустите установку
 sudo bash scripts/deploy.sh
 ```
