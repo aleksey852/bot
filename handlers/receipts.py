@@ -144,8 +144,11 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
             reply_markup=get_main_keyboard(config.is_admin(message.from_user.id))
         )
     elif code in (3, 4):
-        rate_limit_msg = config_manager.get_message('rate_limit', "⚠️ Слишком много запросов. Подождите")
-        await message.answer(rate_limit_msg, reply_markup=get_cancel_keyboard())
+        rate_limit_msg = config_manager.get_message(
+            'rate_limit',
+            "⚠️ Сервис проверки временно перегружен. Пожалуйста, попробуйте через пару минут."
+        )
+        await message.answer(rate_limit_msg, reply_markup=get_main_keyboard(config.is_admin(message.from_user.id)))
     else:
         # Code -1 (Internal error) or unknown
         service_unavailable_msg = config_manager.get_message('service_unavailable', "⚠️ Сервис временно недоступен")

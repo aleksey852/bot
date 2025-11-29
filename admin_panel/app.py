@@ -824,6 +824,7 @@ async def create_backup(request: Request, user: str = Depends(get_current_user))
         if result.returncode == 0:
             return RedirectResponse(url="/backups?created=1", status_code=status.HTTP_303_SEE_OTHER)
         else:
+            logger.error(f"Backup script failed (code {result.returncode}):\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
             return RedirectResponse(url="/backups?error=1", status_code=status.HTTP_303_SEE_OTHER)
     except Exception as e:
         logger.error(f"Backup creation failed: {e}")
