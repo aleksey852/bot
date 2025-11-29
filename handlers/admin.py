@@ -308,11 +308,6 @@ async def export_winners(message: Message):
     import csv
     from aiogram.types import FSInputFile
     
-    winners = await get_all_winners_for_export()
-    if not winners:
-        await message.answer("Победителей нет")
-        return
-    
     # Create temp file
     fd, path = tempfile.mkstemp(suffix=".csv")
     try:

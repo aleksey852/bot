@@ -15,7 +15,7 @@
     <div class="card-header"><i class="bi bi-telephone"></i> Контакты поддержки</div>
     <div class="card-body">
         <p class="text-muted mb-4">Эти контакты отображаются пользователям в разделе «Поддержка» бота.</p>
-        
+
         {% for key, label, value in support_fields %}
         <form method="post" action="/settings/support/update" class="mb-4">
             <div class="row align-items-end">
@@ -25,8 +25,9 @@
                 </div>
                 <div class="col-md-7">
                     <input type="hidden" name="key" value="{{ key }}">
-                    <input type="text" name="value" value="{{ value }}" class="form-control" 
-                           placeholder="{% if 'EMAIL' in key %}support@example.com{% else %}@YourSupportBot{% endif %}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="text" name="value" value="{{ value }}" class="form-control"
+                        placeholder="{% if 'EMAIL' in key %}support@example.com{% else %}@YourSupportBot{% endif %}">
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">Сохранить</button>
@@ -42,12 +43,13 @@
     <div class="card-body">
         <h6>Telegram поддержки</h6>
         <p>Укажите username бота или канала поддержки начиная с @. Например: <code>@YourSupportBot</code></p>
-        
+
         <h6>Email поддержки</h6>
         <p>Email-адрес для обращений. Этот email может отображаться в FAQ бота.</p>
-        
+
         <div class="alert alert-warning mt-3">
-            <i class="bi bi-exclamation-triangle"></i> После изменения настроек требуется перезапуск бота для применения изменений.
+            <i class="bi bi-exclamation-triangle"></i> После изменения настроек требуется перезапуск бота для применения
+            изменений.
         </div>
     </div>
 </div>

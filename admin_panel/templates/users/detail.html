@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">
-        <a href="/users" class="text-decoration-none text-muted">Пользователи</a> / 
+        <a href="/users" class="text-decoration-none text-muted">Пользователи</a> /
         {{ user_data.full_name or 'Пользователь' }}
     </h1>
 </div>
@@ -58,7 +58,8 @@
                     </tr>
                     <tr>
                         <th class="text-muted">Регистрация:</th>
-                        <td>{{ user_data.registered_at.strftime('%d.%m.%Y %H:%M') if user_data.registered_at else '-' }}</td>
+                        <td>{{ user_data.registered_at.strftime('%d.%m.%Y %H:%M') if user_data.registered_at else '-' }}
+                        </td>
                     </tr>
                     <tr>
                         <th class="text-muted">Статус:</th>
@@ -73,7 +74,7 @@
                 </table>
             </div>
         </div>
-        
+
         <div class="card mt-4">
             <div class="card-header"><i class="bi bi-bar-chart"></i> Статистика</div>
             <div class="card-body">
@@ -94,7 +95,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         {% if user_data.wins %}
         <div class="card mt-4">
             <div class="card-header"><i class="bi bi-trophy text-warning"></i> Выигрыши</div>
@@ -103,7 +104,8 @@
                     {% for w in user_data.wins %}
                     <li class="list-group-item d-flex justify-content-between">
                         <span>{{ w.prize_name or 'Приз' }}</span>
-                        <small class="text-muted">{{ w.created_at.strftime('%d.%m.%Y') if w.created_at else '' }}</small>
+                        <small class="text-muted">{{ w.created_at.strftime('%d.%m.%Y') if w.created_at else ''
+                            }}</small>
                     </li>
                     {% endfor %}
                 </ul>
@@ -111,7 +113,7 @@
         </div>
         {% endif %}
     </div>
-    
+
     <div class="col-md-8">
         <div class="row g-4 mb-4">
             <div class="col-md-6">
@@ -119,8 +121,10 @@
                     <div class="card-header"><i class="bi bi-chat-dots"></i> Написать сообщение</div>
                     <div class="card-body">
                         <form method="post" action="/users/{{ user_data.id }}/message" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <div class="mb-3">
-                                <textarea name="text" class="form-control" rows="3" placeholder="Текст сообщения..."></textarea>
+                                <textarea name="text" class="form-control" rows="3"
+                                    placeholder="Текст сообщения..."></textarea>
                             </div>
                             <div class="mb-3">
                                 <input type="file" name="photo" class="form-control" accept="image/*">
@@ -133,31 +137,37 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-header"><i class="bi bi-gear"></i> Действия</div>
                     <div class="card-body d-flex flex-column gap-2">
                         <form method="post" action="/users/{{ user_data.id }}/add-receipt">
-                            <button type="submit" class="btn btn-outline-success w-100" onclick="return confirm('Добавить чек этому пользователю?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-outline-success w-100"
+                                onclick="return confirm('Добавить чек этому пользователю?')">
                                 <i class="bi bi-plus-circle"></i> Выдать чек
                             </button>
                         </form>
-                        
+
                         <form method="post" action="/users/{{ user_data.id }}/block">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             {% if user_data.is_blocked %}
-                            <button type="submit" class="btn btn-outline-secondary w-100" onclick="return confirm('Разблокировать пользователя?')">
+                            <button type="submit" class="btn btn-outline-secondary w-100"
+                                onclick="return confirm('Разблокировать пользователя?')">
                                 <i class="bi bi-shield-check"></i> Разблокировать
                             </button>
                             {% else %}
-                            <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('Заблокировать пользователя? Он не будет получать рассылки.')">
+                            <button type="submit" class="btn btn-outline-danger w-100"
+                                onclick="return confirm('Заблокировать пользователя? Он не будет получать рассылки.')">
                                 <i class="bi bi-shield-x"></i> Заблокировать
                             </button>
                             {% endif %}
                         </form>
-                        
+
                         {% if user_data.username %}
-                        <a href="https://t.me/{{ user_data.username }}" target="_blank" class="btn btn-outline-primary w-100">
+                        <a href="https://t.me/{{ user_data.username }}" target="_blank"
+                            class="btn btn-outline-primary w-100">
                             <i class="bi bi-telegram"></i> Открыть в Telegram
                         </a>
                         {% endif %}
@@ -165,7 +175,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header"><i class="bi bi-receipt"></i> Чеки пользователя</div>
             <div class="card-body p-0">
@@ -193,7 +203,8 @@
                                     <span class="badge bg-secondary">{{ r.status }}</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ r.product_name[:40] if r.product_name else '-' }}{% if r.product_name and r.product_name|length > 40 %}...{% endif %}</td>
+                                <td>{{ r.product_name[:40] if r.product_name else '-' }}{% if r.product_name and
+                                    r.product_name|length > 40 %}...{% endif %}</td>
                                 <td>{{ '%.2f ₽' % (r.total_sum / 100) if r.total_sum else '-' }}</td>
                                 <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '-' }}</td>
                             </tr>

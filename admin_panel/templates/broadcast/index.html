@@ -17,28 +17,30 @@
             <div class="card-header"><i class="bi bi-plus-circle"></i> Создать рассылку</div>
             <div class="card-body">
                 <form method="post" action="/broadcast/create" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="alert alert-info-custom mb-4">
                         <i class="bi bi-info-circle"></i> Получателей: <strong>{{ total_users }}</strong> пользователей
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Текст сообщения</label>
-                        <textarea name="text" class="form-control" rows="4" placeholder="Введите текст сообщения..."></textarea>
+                        <textarea name="text" class="form-control" rows="4"
+                            placeholder="Введите текст сообщения..."></textarea>
                         <small class="text-muted">Поддерживается HTML форматирование</small>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Фото (опционально)</label>
                         <input type="file" name="photo" class="form-control" accept="image/*">
                         <small class="text-muted">Если загружено фото, текст станет подписью</small>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Запланировать на (опционально)</label>
                         <input type="datetime-local" name="scheduled_for" class="form-control">
                         <small class="text-muted">Оставьте пустым для немедленной отправки.</small>
                     </div>
-                    
+
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-send"></i> Создать рассылку
                     </button>
@@ -46,7 +48,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-6">
         <div class="card">
             <div class="card-header"><i class="bi bi-clock-history"></i> Последние рассылки</div>
@@ -70,7 +72,8 @@
                                     {% if b.is_completed %}
                                     <span class="badge badge-completed">✓ Завершена</span>
                                     {% elif b.scheduled_for %}
-                                    <span class="badge badge-scheduled">⏰ {{ b.scheduled_for.strftime('%d.%m %H:%M') if b.scheduled_for else '' }}</span>
+                                    <span class="badge badge-scheduled">⏰ {{ b.scheduled_for.strftime('%d.%m %H:%M') if
+                                        b.scheduled_for else '' }}</span>
                                     {% else %}
                                     <span class="badge badge-pending">⏳ В очереди</span>
                                     {% endif %}
@@ -89,7 +92,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="card mt-4">
             <div class="card-header"><i class="bi bi-lightbulb"></i> Советы</div>
             <div class="card-body">
