@@ -16,6 +16,7 @@ from database.methods import (
     get_participants_count, get_participants_with_ids, save_winners_atomic,
     get_unnotified_winners, mark_winner_notified, get_campaign_winners,
     get_recent_raffles_with_winners, get_all_winners_for_export, get_user_wins,
+    get_raffle_losers,
     # Broadcast
     get_broadcast_progress, save_broadcast_progress, delete_broadcast_progress,
     # Health & Stats
