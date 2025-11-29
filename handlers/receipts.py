@@ -123,9 +123,10 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
     
     if code == 1:
         await _handle_valid_receipt(message, state, result, user_db_id)
-    elif code == 0 or code == 5:
+    elif code in (0, 3, 4, 5):
         # Code 0: Check incorrect (invalid QR)
-        # Code 5: Other/Data not received (often means QR recognized but data fetch failed, or bad QR)
+        # Code 5: Other/Data not received
+        # Code 3/4: Rate limit (User requested to treat this as "No QR found" since valid QRs work)
         scan_failed_msg = config_manager.get_message(
             'scan_failed',
             "🔍 Не удалось распознать чек\n\n• Сфотографируйте ближе\n• Улучшите освещение\n\n💡 Свежий чек? Подождите 5-10 минут"
@@ -143,12 +144,6 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
             fns_wait_msg,
             reply_markup=get_main_keyboard(config.is_admin(message.from_user.id))
         )
-    elif code in (3, 4):
-        rate_limit_msg = config_manager.get_message(
-            'rate_limit',
-            "⚠️ Сервис проверки временно перегружен. Пожалуйста, попробуйте через пару минут."
-        )
-        await message.answer(rate_limit_msg, reply_markup=get_main_keyboard(config.is_admin(message.from_user.id)))
     else:
         # Code -1 (Internal error) or unknown
         service_unavailable_msg = config_manager.get_message('service_unavailable', "⚠️ Сервис временно недоступен")
