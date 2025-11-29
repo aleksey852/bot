@@ -614,8 +614,8 @@ async def create_broadcast(
         filepath = UPLOADS_DIR / filename
         
         async with aiofiles.open(filepath, 'wb') as f:
-            while content := await photo.read(1024 * 1024):
-                await f.write(content)
+            while chunk := await photo.read(1024 * 1024):
+                await f.write(chunk)
         
         content["photo_path"] = str(filepath)
         content["caption"] = text
@@ -796,8 +796,18 @@ async def backups_list(request: Request, user: str = Depends(get_current_user)):
 @app.post("/backups/create", dependencies=[Depends(verify_csrf_token)])
 async def create_backup(request: Request, user: str = Depends(get_current_user)):
     import subprocess
+    from pathlib import Path
     
     try:
+        # Determine backup directory (same logic as list)
+        backup_dir = Path("/var/backups/buster-vibe-bot")
+        if not backup_dir.exists():
+            try:
+                backup_dir.mkdir(parents=True, exist_ok=True)
+            except PermissionError:
+                backup_dir = BASE_DIR / "backups"
+                backup_dir.mkdir(exist_ok=True)
+        
         # Run backup script
         script_path = BASE_DIR / "scripts" / "backup.sh"
         
@@ -805,7 +815,7 @@ async def create_backup(request: Request, user: str = Depends(get_current_user))
         os.chmod(script_path, 0o755)
         
         result = subprocess.run(
-            ["bash", str(script_path)],
+            ["bash", str(script_path), str(backup_dir)],
             capture_output=True,
             text=True,
             timeout=300  # 5 minutes timeout

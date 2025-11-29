@@ -26,7 +26,7 @@ async def close_api_client():
 async def check_receipt(qr_file=None, qr_raw: str = None, user_id: int = None) -> dict:
     """Validate receipt via proverkacheka.com API"""
     if not config.PROVERKA_CHEKA_TOKEN:
-        return {"code": 5, "message": "API token not configured"}
+        return {"code": -1, "message": "API token not configured"}
     
     global _session
     if not _session:
@@ -49,11 +49,11 @@ async def check_receipt(qr_file=None, qr_raw: str = None, user_id: int = None) -
         
         async with _session.post(config.PROVERKA_CHEKA_URL, data=data) as resp:
             if resp.status != 200:
-                return {"code": 5, "message": f"HTTP {resp.status}"}
+                return {"code": -1, "message": f"HTTP {resp.status}"}
             return await resp.json()
             
     except asyncio.TimeoutError:
-        return {"code": 5, "message": "Timeout"}
+        return {"code": -1, "message": "Timeout"}
     except Exception as e:
         logger.error(f"API error: {e}")
-        return {"code": 5, "message": str(e)}
+        return {"code": -1, "message": str(e)}

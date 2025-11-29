@@ -435,7 +435,7 @@ async def search_users(query: str, limit: int = 20) -> List[Dict]:
             user = await db.fetchrow("""
                 SELECT u.*, COUNT(r.id) as receipt_count
                 FROM users u LEFT JOIN receipts r ON u.id = r.user_id AND r.status = 'valid'
-                WHERE u.telegram_id = $1 OR u.id = $1::int
+                WHERE u.telegram_id = $1 OR u.id = $1
                 GROUP BY u.id
             """, int(clean_query))
             if user:

@@ -107,6 +107,9 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
         return
     
     code = result.get("code")
+    msg = result.get("message", "")
+    logger.info(f"🧾 API Check Result: user={message.from_user.id} code={code} msg='{msg}'")
+    
     data = await state.get_data()
     user_db_id = data.get("user_db_id")
     
@@ -120,7 +123,9 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
     
     if code == 1:
         await _handle_valid_receipt(message, state, result, user_db_id)
-    elif code == 0:
+    elif code == 0 or code == 5:
+        # Code 0: Check incorrect (invalid QR)
+        # Code 5: Other/Data not received (often means QR recognized but data fetch failed, or bad QR)
         scan_failed_msg = config_manager.get_message(
             'scan_failed',
             "🔍 Не удалось распознать чек\n\n• Сфотографируйте ближе\n• Улучшите освещение\n\n💡 Свежий чек? Подождите 5-10 минут"
@@ -142,6 +147,7 @@ async def process_receipt_photo(message: Message, state: FSMContext, bot: Bot):
         rate_limit_msg = config_manager.get_message('rate_limit', "⚠️ Слишком много запросов. Подождите")
         await message.answer(rate_limit_msg, reply_markup=get_cancel_keyboard())
     else:
+        # Code -1 (Internal error) or unknown
         service_unavailable_msg = config_manager.get_message('service_unavailable', "⚠️ Сервис временно недоступен")
         await message.answer(service_unavailable_msg, reply_markup=get_support_keyboard())
         await state.clear()

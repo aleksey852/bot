@@ -18,11 +18,21 @@ log() { echo -e "${GREEN}[+]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
-# Check if running as root
-[[ $EUID -ne 0 ]] && err "Run as root: sudo bash scripts/backup.sh"
+# Check if running as root (optional, but recommended for system backups)
+# [[ $EUID -ne 0 ]] && warn "Not running as root. Ensure you have write permissions to BACKUP_DIR."
+
+# Allow overriding BACKUP_DIR from first argument
+if [ -n "$1" ]; then
+    BACKUP_DIR="$1"
+fi
 
 # Create backup directory
 mkdir -p "$BACKUP_DIR"
+
+# Check if backup directory is writable
+if [ ! -w "$BACKUP_DIR" ]; then
+    err "Backup directory $BACKUP_DIR is not writable!"
+fi
 
 # Check free disk space
 BACKUP_PARTITION=$(df "$BACKUP_DIR" | tail -1 | awk '{print $6}')
