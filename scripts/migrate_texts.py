@@ -71,6 +71,7 @@ async def migrate():
     # Initialize DB pool
     from database import init_db
     await init_db()
+    await config_manager.load()
     
     count = 0
     for key, text in MESSAGES.items():
