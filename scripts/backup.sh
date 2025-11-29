@@ -50,19 +50,42 @@ fi
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/backup_${TIMESTAMP}.sql"
 
-# Get database credentials from .env
+# Get database credentials from .env (safely, without sourcing)
 if [ -f "$PROJECT_DIR/.env" ]; then
-    source "$PROJECT_DIR/.env"
+    # Extract values using grep and sed to handle potential spaces/comments safely
+    # We only care about DATABASE_URL for the backup
+    DATABASE_URL=$(grep "^DATABASE_URL=" "$PROJECT_DIR/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
 else
     warn ".env file not found, using defaults"
     DATABASE_URL="postgresql://buster:password@localhost:5432/buster_bot"
 fi
 
 # Extract DB connection details from DATABASE_URL
-DB_NAME=$(echo $DATABASE_URL | sed -n 's/.*\/\([^?]*\).*/\1/p')
-DB_USER=$(echo $DATABASE_URL | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
-DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+# Format: postgresql://user:password@host:port/dbname
+if [ -n "$DATABASE_URL" ]; then
+    # Remove protocol
+    PROTO_REMOVED="${DATABASE_URL#*://}"
+    # Extract user:password
+    USER_PASS="${PROTO_REMOVED%@*}"
+    # Extract host:port/dbname
+    HOST_DB="${PROTO_REMOVED#*@}"
+    
+    DB_USER="${USER_PASS%:*}"
+    PGPASSWORD="${USER_PASS#*:}"
+    
+    DB_HOST_PORT="${HOST_DB%/*}"
+    DB_NAME="${HOST_DB#*/}"
+    # Remove any query parameters from DB_NAME
+    DB_NAME="${DB_NAME%%\?*}"
+    
+    DB_HOST="${DB_HOST_PORT%:*}"
+    DB_PORT="${DB_HOST_PORT#*:}"
+    
+    # Handle case where port is missing (host only)
+    if [ "$DB_HOST" = "$DB_PORT" ]; then
+        DB_PORT="5432"
+    fi
+fi
 
 if [ -z "$DB_NAME" ]; then
     DB_NAME="buster_bot"
