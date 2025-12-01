@@ -8,12 +8,13 @@ from database.methods import (
     get_user_receipts_detailed, block_user,
     # Receipts
     add_receipt, is_receipt_exists, get_user_receipts, get_user_receipts_count,
-    get_all_receipts_paginated, get_total_receipts_count,
+    get_user_tickets_count, get_all_receipts_paginated, get_total_receipts_count,
     # Campaigns
     add_campaign, get_pending_campaigns, mark_campaign_completed, get_campaign,
     get_recent_campaigns,
     # Winners
-    get_participants_count, get_participants_with_ids, save_winners_atomic,
+    get_participants_count, get_participants_with_ids, get_participants_with_tickets,
+    get_total_tickets_count, save_winners_atomic,
     get_unnotified_winners, mark_winner_notified, get_campaign_winners,
     get_recent_raffles_with_winners, get_all_winners_for_export, get_user_wins,
     get_raffle_losers,

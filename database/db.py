@@ -117,6 +117,7 @@ async def _create_schema():
                     status TEXT NOT NULL,
                     total_sum INTEGER DEFAULT 0,
                     product_name TEXT,
+                    tickets INTEGER DEFAULT 1,
                     data JSONB,
                     created_at TIMESTAMP DEFAULT NOW(),
                     UNIQUE(fiscal_drive_number, fiscal_document_number, fiscal_sign)
@@ -216,6 +217,15 @@ async def _create_schema():
                     await db.execute(idx)
                 except:
                     pass
+            
+            # Migration: Add tickets column if not exists (for existing databases)
+            try:
+                await db.execute("""
+                    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tickets INTEGER DEFAULT 1
+                """)
+                logger.info("✅ Migration: tickets column ensured in receipts table")
+            except Exception as e:
+                logger.debug(f"Tickets column migration: {e}")
             
             logger.info("Database schema initialized")
         

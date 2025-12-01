@@ -16,6 +16,7 @@
                         <th>Пользователь</th>
                         <th>Статус</th>
                         <th>Товар</th>
+                        <th>Билеты</th>
                         <th>Сумма</th>
                         <th>ФН / ФД / ФП</th>
                         <th>Дата</th>
@@ -39,13 +40,14 @@
                             {% endif %}
                         </td>
                         <td>{{ r.product_name[:30] if r.product_name else '-' }}{% if r.product_name and r.product_name|length > 30 %}...{% endif %}</td>
+                        <td><span class="badge bg-primary">{{ r.tickets if r.tickets else 1 }}</span></td>
                         <td>{{ '%.2f ₽' % (r.total_sum / 100) if r.total_sum else '-' }}</td>
                         <td><small><code>{{ r.fiscal_drive_number or '-' }} / {{ r.fiscal_document_number or '-' }} / {{ r.fiscal_sign or '-' }}</code></small></td>
                         <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '-' }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Нет чеков</td>
+                        <td colspan="8" class="text-center text-muted py-4">Нет чеков</td>
                     </tr>
                     {% endfor %}
                 </tbody>

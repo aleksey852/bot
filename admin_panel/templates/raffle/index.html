@@ -26,6 +26,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="alert alert-info-custom mb-4">
                         <i class="bi bi-people"></i> Участников: <strong>{{ participants }}</strong>
+                        {% if total_tickets %}<br><i class="bi bi-ticket-perforated"></i> Всего билетов: <strong>{{ total_tickets }}</strong>{% endif %}
                     </div>
 
                     <div class="row">

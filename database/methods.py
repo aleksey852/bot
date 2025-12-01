@@ -67,7 +67,8 @@ async def get_user_with_stats(telegram_id: int) -> Optional[Dict]:
             return None
         stats = await db.fetchrow("""
             SELECT COUNT(*) as total_receipts,
-                   COUNT(CASE WHEN status = 'valid' THEN 1 END) as valid_receipts
+                   COUNT(CASE WHEN status = 'valid' THEN 1 END) as valid_receipts,
+                   COALESCE(SUM(CASE WHEN status = 'valid' THEN tickets ELSE 0 END), 0) as total_tickets
             FROM receipts WHERE user_id = $1
         """, user['id'])
         return {**user, **stats}
@@ -116,7 +117,7 @@ async def add_receipt(user_id: int, status: str, data: Dict, **kwargs) -> int:
     placeholders = ['$1', '$2', '$3']
     
     for i, key in enumerate(['fiscal_drive_number', 'fiscal_document_number', 
-                             'fiscal_sign', 'total_sum', 'product_name', 'raw_qr'], 4):
+                             'fiscal_sign', 'total_sum', 'product_name', 'raw_qr', 'tickets'], 4):
         if key in kwargs:
             fields.append(key)
             values.append(kwargs[key])
@@ -150,6 +151,14 @@ async def get_user_receipts_count(user_id: int) -> int:
     async with get_connection() as db:
         return await db.fetchval(
             "SELECT COUNT(*) FROM receipts WHERE user_id = $1 AND status = 'valid'", user_id)
+
+
+async def get_user_tickets_count(user_id: int) -> int:
+    """Get total tickets count for user (sum of all valid receipt tickets)"""
+    async with get_connection() as db:
+        result = await db.fetchval(
+            "SELECT COALESCE(SUM(tickets), 0) FROM receipts WHERE user_id = $1 AND status = 'valid'", user_id)
+        return result or 0
 
 
 async def get_all_receipts_paginated(page: int = 1, per_page: int = 50) -> List[Dict]:
@@ -216,6 +225,27 @@ async def get_participants_with_ids() -> List[Dict]:
             SELECT DISTINCT u.id as user_id, u.telegram_id, u.full_name, u.username
             FROM users u JOIN receipts r ON u.id = r.user_id WHERE r.status = 'valid'
         """)
+
+
+async def get_participants_with_tickets() -> List[Dict]:
+    """Get participants with their total tickets count for weighted raffle"""
+    async with get_connection() as db:
+        return await db.fetch("""
+            SELECT u.id as user_id, u.telegram_id, u.full_name, u.username,
+                   COALESCE(SUM(r.tickets), 0) as total_tickets
+            FROM users u 
+            JOIN receipts r ON u.id = r.user_id 
+            WHERE r.status = 'valid'
+            GROUP BY u.id, u.telegram_id, u.full_name, u.username
+            HAVING SUM(r.tickets) > 0
+        """)
+
+
+async def get_total_tickets_count() -> int:
+    """Get total number of tickets for raffle"""
+    async with get_connection() as db:
+        result = await db.fetchval("SELECT COALESCE(SUM(tickets), 0) FROM receipts WHERE status = 'valid'")
+        return result or 0
 
 
 async def get_raffle_losers(campaign_id: int, limit: int = 1000, offset: int = 0) -> List[Dict]:
@@ -379,6 +409,7 @@ async def get_stats() -> Dict:
                 "total_users": await db.fetchval("SELECT COUNT(*) FROM users"),
                 "total_receipts": await db.fetchval("SELECT COUNT(*) FROM receipts"),
                 "valid_receipts": await db.fetchval("SELECT COUNT(*) FROM receipts WHERE status = 'valid'"),
+                "total_tickets": await db.fetchval("SELECT COALESCE(SUM(tickets), 0) FROM receipts WHERE status = 'valid'"),
                 "participants": await db.fetchval("SELECT COUNT(DISTINCT user_id) FROM receipts WHERE status = 'valid'"),
                 "users_today": await db.fetchval("SELECT COUNT(*) FROM users WHERE registered_at >= $1", today),
                 "users_24h": await db.fetchval("SELECT COUNT(*) FROM users WHERE registered_at >= $1", now - timedelta(hours=24)),
@@ -386,6 +417,7 @@ async def get_stats() -> Dict:
                 "receipts_today": await db.fetchval("SELECT COUNT(*) FROM receipts WHERE created_at >= $1", today),
                 "receipts_24h": await db.fetchval("SELECT COUNT(*) FROM receipts WHERE created_at >= $1", now - timedelta(hours=24)),
                 "receipts_7d": await db.fetchval("SELECT COUNT(*) FROM receipts WHERE created_at >= $1", week_ago),
+                "tickets_today": await db.fetchval("SELECT COALESCE(SUM(tickets), 0) FROM receipts WHERE status = 'valid' AND created_at >= $1", today),
                 "total_winners": await db.fetchval("SELECT COUNT(*) FROM winners"),
                 "total_campaigns": await db.fetchval("SELECT COUNT(*) FROM campaigns"),
                 "completed_campaigns": await db.fetchval("SELECT COUNT(*) FROM campaigns WHERE is_completed = TRUE"),

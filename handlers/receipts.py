@@ -52,10 +52,13 @@ async def start_receipt_upload(message: Message, state: FSMContext):
     
     await state.update_data(user_db_id=user['id'])
     
+    # Show tickets count instead of receipts
+    tickets_count = user.get('total_tickets', user['valid_receipts'])
+    
     upload_instruction = config_manager.get_message(
         'upload_instruction',
-        "📸 Отправьте фото QR-кода с чека\n\nВаших чеков: {count}\n\n💡 QR-код должен быть чётким и полностью в кадре"
-    ).format(count=user['valid_receipts'])
+        "📸 Отправьте фото QR-кода с чека\n\nВаших билетов: {count}\n\n💡 QR-код должен быть чётким и полностью в кадре"
+    ).format(count=tickets_count)
     
     await message.answer(
         upload_instruction,
@@ -158,12 +161,29 @@ async def _handle_valid_receipt(message: Message, state: FSMContext, result: dic
     # Get dynamic keywords
     target_keywords = get_target_keywords()
     
-    # Check for target products
-    found_items = [
-        item.get("name", "Товар")
-        for item in items
-        if any(kw in item.get("name", "").lower() for kw in target_keywords)
-    ]
+    # Check for target products and count total quantity (tickets)
+    found_items = []
+    total_tickets = 0
+    
+    for item in items:
+        item_name = item.get("name", "")
+        if any(kw in item_name.lower() for kw in target_keywords):
+            # Get quantity - it can be float (e.g., 2.0) or int
+            quantity = item.get("quantity", 1)
+            try:
+                quantity = int(float(quantity))  # Convert 2.0 -> 2
+            except (TypeError, ValueError):
+                quantity = 1
+            
+            # Ensure at least 1 ticket per item
+            quantity = max(1, quantity)
+            total_tickets += quantity
+            
+            found_items.append({
+                "name": item_name,
+                "quantity": quantity,
+                "sum": item.get("sum")
+            })
     
     if not found_items:
         no_product_msg = config_manager.get_message(
@@ -186,7 +206,7 @@ async def _handle_valid_receipt(message: Message, state: FSMContext, result: dic
         await message.answer(duplicate_msg, reply_markup=get_cancel_keyboard())
         return
     
-    # Save receipt
+    # Save receipt with tickets count
     try:
         receipt_id = await add_receipt(
             user_id=user_db_id,
@@ -194,15 +214,16 @@ async def _handle_valid_receipt(message: Message, state: FSMContext, result: dic
             data={
                 "dateTime": receipt_data.get("dateTime"),
                 "totalSum": receipt_data.get("totalSum"),
-                "promo_items": [{"name": item.get("name"), "sum": item.get("sum")} 
-                               for item in items if any(kw in item.get("name", "").lower() for kw in target_keywords)][:10]
+                "promo_items": [{"name": i["name"], "quantity": i["quantity"], "sum": i["sum"]} 
+                               for i in found_items][:10]
             },
             fiscal_drive_number=fn,
             fiscal_document_number=fd,
             fiscal_sign=fp,
             total_sum=receipt_data.get("totalSum", 0),
             raw_qr="photo_upload",
-            product_name=found_items[0][:100] if found_items else None
+            product_name=found_items[0]["name"][:100] if found_items else None,
+            tickets=total_tickets
         )
     except Exception as e:
         # Check for unique violation (asyncpg error)
@@ -222,19 +243,28 @@ async def _handle_valid_receipt(message: Message, state: FSMContext, result: dic
         return
     
     await increment_rate_limit(message.from_user.id)
-    total_valid = await get_user_receipts_count(user_db_id)
     
-    if total_valid == 1:
+    # Get total tickets for user (not just receipts count)
+    from database import get_user_tickets_count
+    total_user_tickets = await get_user_tickets_count(user_db_id)
+    
+    # Show tickets info to user
+    if total_user_tickets == total_tickets:  # First receipt
         first_msg = config_manager.get_message(
             'receipt_first',
             "🎉 Поздравляем с первым чеком!\n\nВы в розыгрыше! Загружайте ещё 🎯"
         )
+        if total_tickets > 1:
+            first_msg = f"🎉 Поздравляем! +{total_tickets} билетов!\n\nВсего билетов: {total_user_tickets} 🎯"
         await message.answer(first_msg, reply_markup=get_receipt_continue_keyboard())
     else:
-        valid_msg = config_manager.get_message(
-            'receipt_valid',
-            "✅ Чек принят!\n\nВсего чеков: {count} 🎯"
-        ).format(count=total_valid)
+        if total_tickets > 1:
+            valid_msg = f"✅ Чек принят! +{total_tickets} билетов!\n\nВсего билетов: {total_user_tickets} 🎯"
+        else:
+            valid_msg = config_manager.get_message(
+                'receipt_valid',
+                "✅ Чек принят!\n\nВсего билетов: {count} 🎯"
+            ).format(count=total_user_tickets)
         await message.answer(valid_msg, reply_markup=get_receipt_continue_keyboard())
     
     await state.set_state(ReceiptSubmission.upload_qr)
@@ -245,11 +275,11 @@ async def process_receipt_invalid_type(message: Message, state: FSMContext):
     if message.text in ("❌ Отмена", "🏠 В меню"):
         await state.clear()
         user = await get_user_with_stats(message.from_user.id)
-        count = user['valid_receipts'] if user else 0
+        count = user.get('total_tickets', user['valid_receipts']) if user else 0
         
         cancel_msg = config_manager.get_message(
             'cancel_msg',
-            "Выберите действие 👇\nВаших чеков: {count}"
+            "Выберите действие 👇\nВаших билетов: {count}"
         ).format(count=count)
         
         await message.answer(

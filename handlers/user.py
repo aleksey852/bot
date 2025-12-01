@@ -28,11 +28,11 @@ RECEIPTS_PER_PAGE = 10
 async def cancel_handler(message: Message, state: FSMContext):
     await state.clear()
     user = await get_user_with_stats(message.from_user.id)
-    count = user['valid_receipts'] if user else 0
+    count = user.get('total_tickets', user['valid_receipts']) if user else 0
     
     cancel_msg = config_manager.get_message(
         'cancel_msg',
-        "Выберите действие 👇\nВаших чеков: {count}"
+        "Выберите действие 👇\nВаших билетов: {count}"
     ).format(count=count)
     
     await message.answer(
@@ -57,11 +57,14 @@ async def command_start(message: Message, state: FSMContext):
         days = config.days_until_end()
         days_text = f"\nДо конца акции: {days} дн." if days > 0 else ""
         
+        # Show tickets count instead of receipts
+        tickets_count = user.get('total_tickets', user['valid_receipts'])
+        
         # Use dynamic message from config_manager
         welcome_msg = config_manager.get_message(
             'welcome_back',
-            "С возвращением, {name}! 👋\n\nВаших чеков: {count}{days_text}\n\nВыберите действие 👇"
-        ).format(name=user['full_name'], count=user['valid_receipts'], days_text=days_text)
+            "С возвращением, {name}! 👋\n\nВаших билетов: {count}{days_text}\n\nВыберите действие 👇"
+        ).format(name=user['full_name'], count=tickets_count, days_text=days_text)
         
         await message.answer(welcome_msg, reply_markup=get_main_keyboard(config.is_admin(message.from_user.id)))
     else:
@@ -97,14 +100,16 @@ async def show_profile(message: Message):
     days = config.days_until_end()
     days_text = f"\n\nДо конца акции: {days} дн." if days > 0 else ""
     
+    tickets_count = user.get('total_tickets', user['valid_receipts'])
+    
     profile_msg = config_manager.get_message(
         'profile',
-        "👤 Ваш профиль\n\nИмя: {name}\nТелефон: {phone}\n\n📊 Чеков загружено: {total}\nЧеков принято: {valid}{wins_text}{days_text}"
+        "👤 Ваш профиль\n\nИмя: {name}\nТелефон: {phone}\n\n📊 Чеков загружено: {total}\n🎫 Билетов: {tickets}{wins_text}{days_text}"
     ).format(
         name=user['full_name'],
         phone=user['phone'],
-        total=user['total_receipts'],
-        valid=user['valid_receipts'],
+        total=user['valid_receipts'],
+        tickets=tickets_count,
         wins_text=wins_text,
         days_text=days_text
     )
@@ -133,12 +138,14 @@ async def command_status(message: Message):
         await message.answer(not_registered_msg)
         return
     
+    tickets_count = user.get('total_tickets', user['valid_receipts'])
+    
     status_msg = config_manager.get_message(
         'status',
-        "📊 {name}\n\nЧеков: {valid}\nДо конца: {days} дн."
+        "📊 {name}\n\nБилетов: {tickets}\nДо конца: {days} дн."
     ).format(
         name=user['full_name'],
-        valid=user['valid_receipts'],
+        tickets=tickets_count,
         days=config.days_until_end()
     )
     await message.answer(status_msg)
@@ -199,8 +206,10 @@ def _format_receipts(receipts: list, page: int, total: int) -> str:
         status = "✅" if r['status'] == 'valid' else "❌"
         date = str(r['created_at'])[:10] if r.get('created_at') else ""
         sum_text = f" • {r['total_sum'] // 100}₽" if r.get('total_sum') else ""
+        tickets = r.get('tickets', 1)
+        tickets_text = f" • 🎫{tickets}" if tickets > 1 else ""
         product = f"\n   └ {r['product_name'][:30]}" if r.get('product_name') else ""
-        lines.append(f"\n{status} {date}{sum_text}{product}")
+        lines.append(f"\n{status} {date}{sum_text}{tickets_text}{product}")
     return "".join(lines)
 
 
@@ -216,7 +225,7 @@ async def show_faq(message: Message):
 async def faq_how(callback: CallbackQuery):
     text = config_manager.get_message(
         'faq_how',
-        "🎯 Как участвовать?\n\n1. Купите акционные товары\n2. Сохраните чек\n3. Сфотографируйте QR-код\n4. Отправьте фото в бот\n5. Ждите розыгрыша!\n\n💡 Чем больше чеков — тем выше шансы"
+        "🎯 Как участвовать?\n\n1. Купите чипсы +VIBE\n2. Сохраните чек\n3. Сфотографируйте QR-код\n4. Отправьте фото в бот\n5. Ждите розыгрыша!\n\n💡 Каждая пачка = 1 билет!\nБольше пачек — выше шансы на выигрыш!"
     )
     await callback.message.edit_text(text, reply_markup=get_faq_back_keyboard())
     await callback.answer()

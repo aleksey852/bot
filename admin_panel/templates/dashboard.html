@@ -37,9 +37,10 @@
     <div class="col-md-3">
         <div class="card stat-card" style="border-left-color: #f59e0b;">
             <div class="card-body">
-                <div class="stat-value">{{ participants if participants else 0 }}</div>
-                <div class="stat-label">Участников розыгрыша</div>
-                <small class="text-muted">{{ stats.conversion if stats else 0 }}% конверсия</small>
+                <div class="stat-value">{{ stats.total_tickets if stats else 0 }}</div>
+                <div class="stat-label">Всего билетов</div>
+                <small class="text-muted">{{ participants if participants else 0 }} участников</small>
+                {% if stats.tickets_today %}<br><small class="text-success">+{{ stats.tickets_today }} сегодня</small>{% endif %}
             </div>
         </div>
     </div>

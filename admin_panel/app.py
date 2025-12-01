@@ -652,14 +652,16 @@ async def create_broadcast(
 
 @app.get("/raffle", response_class=HTMLResponse)
 async def raffle_page(request: Request, user: str = Depends(get_current_user), created: str = None):
-    from database import get_participants_count, get_recent_raffles_with_winners
+    from database import get_participants_count, get_recent_raffles_with_winners, get_total_tickets_count
     
     participants = await get_participants_count()
+    total_tickets = await get_total_tickets_count()
     recent_raffles = await get_recent_raffles_with_winners(limit=5)
     
     return templates.TemplateResponse("raffle/index.html", {
         "request": request, "user": user, "title": "Розыгрыш",
-        "participants": participants, "recent_raffles": recent_raffles,
+        "participants": participants, "total_tickets": total_tickets,
+        "recent_raffles": recent_raffles,
         "created": created, "csrf_token": get_csrf_token(request)
     })
 
